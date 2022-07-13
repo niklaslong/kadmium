@@ -20,12 +20,16 @@ pub enum ConnState {
 #[derive(Debug, Clone, Copy)]
 pub struct PeerMeta {
     pub listening_addr: SocketAddr,
-    pub last_seen: OffsetDateTime,
+    pub last_seen: Option<OffsetDateTime>,
     pub conn_state: ConnState,
 }
 
 impl PeerMeta {
-    fn new(listening_addr: SocketAddr, last_seen: OffsetDateTime, conn_state: ConnState) -> Self {
+    fn new(
+        listening_addr: SocketAddr,
+        last_seen: Option<OffsetDateTime>,
+        conn_state: ConnState,
+    ) -> Self {
         Self {
             listening_addr,
             last_seen,
@@ -97,7 +101,7 @@ impl RoutingTable {
             PeerMeta::new(
                 addr,
                 // TODO: this isn't correct as nodes we haven't connected to haven't been "seen".
-                OffsetDateTime::now_utc(),
+                None,
                 ConnState::Disconnected,
             )
         });
@@ -162,7 +166,7 @@ impl RoutingTable {
 
     pub fn set_last_seen(&mut self, id: Id, last_seen: OffsetDateTime) {
         if let Some(peer_meta) = self.peer_list.get_mut(&id) {
-            peer_meta.last_seen = last_seen
+            peer_meta.last_seen = Some(last_seen)
         }
     }
 
