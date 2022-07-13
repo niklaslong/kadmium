@@ -71,16 +71,16 @@ impl RoutingTable {
         // Buckets should only contain connected peers. The other structures should track
         // connection state.
 
-        // Insert can happen in two instances:
+        // An insert can happen in two instances:
         //
-        // 1. the peer initiated the connection (should only be inserted if there is space in the
-        //    bucket it would be in).
+        // 1. the peer initiated the connection (should only be inserted into the bucket if there
+        //    is space, this requires a later call to set_connected).
         // 2. the peer was included in a list from another peer (should be inserted as
         //    disconnected unless it is already in the list and is connected).
         //
-        // Solution: insert all addresses as disconnected initially, returning whether the relevant
-        // bucket would have space. The caller can then use this information to determine whether
-        // to initiate a connection in case 1, or accept the connection in case 2.
+        // Solution: insert all addresses as disconnected initially. The caller can then check if
+        // the bucket has space and if so initiates a connection in case 1, or accepts the
+        // connection in case 2.
         //
         // Eviction logic (a little different to the standard kadcast protocol):
         //
@@ -90,15 +90,6 @@ impl RoutingTable {
         if id == self.local_id {
             return false;
         }
-
-        // // Calculate the distance by XORing the ids.
-        // let distance = id ^ self.local_id;
-
-        // // Don't calculate the log if distance is 0, this should only happen if the ID we got from
-        // // the peer is the same as ours.
-        // if distance == u128::MIN {
-        //     return false;
-        // }
 
         // Insert the peer into the set, if it doesn't exist.
         self.peer_list.entry(id).or_insert_with(|| {
@@ -151,9 +142,9 @@ impl RoutingTable {
     pub fn set_connected(&mut self, id: Id) -> bool {
         match self.can_connect(id) {
             (true, Some(i)) => {
-                // TODO: if this is true, the id was already in the bucket, this should probably be handled
-                // in some way or another, currently we just update the peer metadata.
                 if let Some(bucket) = self.buckets.get_mut(&i) {
+                    // TODO: if this is true, the id was already in the bucket, this should probably be handled
+                    // in some way or another, currently we just update the peer metadata.
                     bucket.insert(id);
                 }
 
