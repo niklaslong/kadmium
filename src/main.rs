@@ -23,10 +23,6 @@
 //    repeats steps (1)–(3), until an iteration does not yield any nodes closer than the already
 //    known ones anymore.
 
-fn main() {}
-
-// #![feature(int_log)]
-//
 // use std::{collections::HashMap, net::SocketAddr};
 //
 // use kadcast::tree::RoutingTable;
@@ -36,16 +32,10 @@ fn main() {}
 // };
 // use rand::{seq::SliceRandom, thread_rng};
 // use time::OffsetDateTime;
-//
-// fn main() {
-//     let a: u128 = 3;
-//     let b: u128 = 2;
-//
-//     println!("{}", a ^ b);
-//     // println!("{}", (a ^ b).log2());
-// }
-//
-// // TODO: Nonce and Id should be at least 160 bits.
+
+fn main() {}
+
+// TODO: Nonce and Id should be at least 160 bits.
 // type Nonce = u128;
 // type Id = u128;
 //
@@ -91,11 +81,14 @@ fn main() {}
 //     pnode: PNode,
 //     routing_table: RoutingTable,
 // }
-
+//
 // impl Node {
 //     fn process_ping(&mut self, payload: PingPayload) {
-//         // Insert the peer's routing information into the table.
-//         self.routing_table.insert(payload.id, payload.addr);
+//         // The peer should already exist in the peer list (and be inserted into the bucket), update
+//         // the last_seen timestamp.
+//
+//         self.routing_table
+//             .set_last_seen(payload.id, OffsetDateTime::now_utc());
 //
 //         // TODO: respond with PONG.
 //     }
@@ -103,16 +96,18 @@ fn main() {}
 //     fn process_pong(&mut self, payload: PongPayload) {
 //         // Update the bucket order, the index of the bucket in the list is the XOR distance.
 //         self.routing_table
-//             .update_last_seen(payload.id, OffsetDateTime::now_utc())
+//             .set_last_seen(payload.id, OffsetDateTime::now_utc());
 //     }
 //
 //     fn process_find_node(&self, payload: FindNodePayload) {
-//         self.routing_table.find_k_closest(payload.id);
+//         self.routing_table.find_k_closest(payload.id, K as usize);
 //
 //         // TODO: respond with KNODES.
 //     }
 //
-//     fn process_k_nodes() {}
+//     fn process_k_nodes() {
+//         // TODO: insert the nodes into the peer list, then initiate connections where necessary.
+//     }
 //
 //     fn process_chunk(&self, payload: ChunkPayload) {
 //         // This is where the buckets come in handy. When a node processes a chunk message, it
@@ -140,7 +135,7 @@ fn main() {}
 //         // TODO: propagate the CHUNK message to each next_addr.
 //     }
 // }
-
+//
 // impl Pea2Pea for Node {
 //     fn node(&self) -> &PNode {
 //         &self.pnode
@@ -148,5 +143,5 @@ fn main() {}
 // }
 
 // impl Reading for Node {}
-//
+
 // impl Writing for Node {}

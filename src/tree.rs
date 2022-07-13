@@ -4,6 +4,7 @@ use std::{
     net::SocketAddr,
 };
 
+use rand::{seq::IteratorRandom, thread_rng};
 use time::OffsetDateTime;
 
 const K: u8 = 20;
@@ -181,6 +182,32 @@ impl RoutingTable {
 
         ids
     }
+
+    pub fn select_broadcast_peers(&self, height: u32) -> Option<Vec<(u32, SocketAddr)>> {
+        let mut rng = thread_rng();
+
+        // Don't broadcast any further.
+        if height == 0 {
+            return None;
+        }
+
+        let mut selected_peers = vec![];
+        for h in 0..height {
+            if let Some(bucket) = self.buckets.get(&h) {
+                // Choose one peer at random per bucket.
+                if let Some(id) = bucket.iter().choose(&mut rng) {
+                    // The value should exist as the peer is in the bucket.
+                    let peer_meta = self.peer_list.get(id);
+                    debug_assert!(peer_meta.is_some());
+                    let addr = peer_meta.unwrap().listening_addr;
+
+                    selected_peers.push((h, addr))
+                }
+            }
+        }
+
+        Some(selected_peers)
+    }
 }
 
 #[cfg(test)]
@@ -245,5 +272,36 @@ mod tests {
             assert_eq!(id, (i + 1) as u128);
             assert_eq!(peer_meta.listening_addr.port(), (i + 1) as u16);
         }
+    }
+
+    #[test]
+    fn select_broadcast_peers() {
+        let mut rt = RoutingTable::new(0, 5);
+
+        // Generate 5 IDs and addressses.
+        let peers: Vec<(Id, SocketAddr)> = (1..=5)
+            .into_iter()
+            .map(|i| (i as u128, format!("127.0.0.1:{}", i).parse().unwrap()))
+            .collect();
+
+        for peer in peers {
+            assert!(rt.insert(peer.0, peer.1));
+            assert!(rt.set_connected(peer.0));
+        }
+
+        // Find the random addresses in each bucket.
+
+        // If the height is 0, we are the last node in the recursion, don't broadcast.
+        let h = 0;
+        assert!(rt.select_broadcast_peers(h).is_none());
+
+        let h = 1;
+        // Should be present.
+        let selected_peers = rt.select_broadcast_peers(h).unwrap();
+        assert_eq!(selected_peers.len(), 1);
+        // Height for selected peer should be 0.
+        assert_eq!(selected_peers[0].0, 0);
+
+        // TODO: Bucket at index 0 should contain the id corresponding to the address.
     }
 }
