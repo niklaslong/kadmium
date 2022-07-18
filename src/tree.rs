@@ -170,7 +170,7 @@ impl RoutingTable {
         }
     }
 
-    pub fn find_k_closest(&self, id: Id, k: usize) -> Vec<(Id, PeerMeta)> {
+    pub fn find_k_closest(&self, id: Id, k: usize) -> Vec<(Id, SocketAddr)> {
         // Find the K closest nodes to the given ID. There is a total order over the keyspace, so a
         // sort won't yield any conflicts.
         //
@@ -179,7 +179,7 @@ impl RoutingTable {
         let mut ids: Vec<_> = self
             .peer_list
             .iter()
-            .map(|(&candidate_id, &candidate_meta)| (candidate_id, candidate_meta))
+            .map(|(&candidate_id, &candidate_meta)| (candidate_id, candidate_meta.listening_addr))
             .collect();
         ids.sort_by_key(|(candidate_id, _)| candidate_id ^ id);
         ids.truncate(k);
@@ -272,9 +272,9 @@ mod tests {
         assert_eq!(k_closest.len(), 3);
 
         // The closest IDs are in the same order as the indexes, they are however offset by 1.
-        for (i, (id, peer_meta)) in k_closest.into_iter().enumerate() {
+        for (i, (id, addr)) in k_closest.into_iter().enumerate() {
             assert_eq!(id, (i + 1) as u128);
-            assert_eq!(peer_meta.listening_addr.port(), (i + 1) as u16);
+            assert_eq!(addr.port(), (i + 1) as u16);
         }
     }
 
