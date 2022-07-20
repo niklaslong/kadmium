@@ -1,15 +1,16 @@
 use std::{io, net::SocketAddr, sync::Arc};
 
 use bytes::BytesMut;
-use kadcast::{message::Message, tree::RoutingTable};
+use kadcast::{
+    message::{Message, Response},
+    tree::RoutingTable,
+};
 use parking_lot::RwLock;
 use pea2pea::{
     protocols::{Reading, Writing},
     ConnectionSide, Node as PNode, Pea2Pea,
 };
 use tokio_util::codec::{Decoder, Encoder, LengthDelimitedCodec};
-
-type RawData = Vec<u8>;
 
 fn main() {}
 
@@ -29,7 +30,7 @@ impl Pea2Pea for Node {
 
 #[async_trait::async_trait]
 impl Reading for Node {
-    type Message = Message<RawData>;
+    type Message = Message;
     type Codec = MessageCodec;
 
     fn codec(&self, _addr: SocketAddr, _side: ConnectionSide) -> Self::Codec {
@@ -38,22 +39,28 @@ impl Reading for Node {
         }
     }
 
-    async fn process_message(&self, _source: SocketAddr, message: Self::Message) -> io::Result<()> {
-        match message {
-            Message::Ping(ping) => Some(self.routing_table.write().process_ping(ping)),
-            Message::Pong(pong) => {
-                self.routing_table.write().process_pong(pong);
-                None
+    async fn process_message(&self, source: SocketAddr, message: Self::Message) -> io::Result<()> {
+        // Scope the lock.
+        let response = { self.routing_table.write().process_message(message) };
+
+        match response {
+            Some(Response::Unicast(message)) => {
+                let _ = self.unicast(source, message).unwrap().await;
             }
-            _ => None,
-        };
+            Some(Response::Broadcast(broadcast)) => {
+                for (addr, message) in broadcast {
+                    let _ = self.unicast(addr, message).unwrap().await;
+                }
+            }
+            None => {}
+        }
 
         Ok(())
     }
 }
 
 impl Writing for Node {
-    type Message = Message<RawData>;
+    type Message = Message;
     type Codec = MessageCodec;
 
     fn codec(&self, _addr: SocketAddr, _side: ConnectionSide) -> Self::Codec {
@@ -68,7 +75,7 @@ struct MessageCodec {
 }
 
 impl Decoder for MessageCodec {
-    type Item = Message<RawData>;
+    type Item = Message;
     type Error = io::Error;
 
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
@@ -84,10 +91,10 @@ impl Decoder for MessageCodec {
     }
 }
 
-impl Encoder<Message<RawData>> for MessageCodec {
+impl Encoder<Message> for MessageCodec {
     type Error = io::Error;
 
-    fn encode(&mut self, message: Message<RawData>, dst: &mut BytesMut) -> Result<(), Self::Error> {
+    fn encode(&mut self, message: Message, dst: &mut BytesMut) -> Result<(), Self::Error> {
         if let Err(e) = bincode::encode_into_slice(message, dst, bincode::config::standard()) {
             return Err(io::Error::new(io::ErrorKind::Other, e));
         }
