@@ -38,6 +38,7 @@ impl PeerMeta {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct RoutingTable {
     // The node's local ID.
     pub local_id: Id,
@@ -97,14 +98,9 @@ impl RoutingTable {
         }
 
         // Insert the peer into the set, if it doesn't exist.
-        self.peer_list.entry(id).or_insert_with(|| {
-            PeerMeta::new(
-                addr,
-                // TODO: this isn't correct as nodes we haven't connected to haven't been "seen".
-                None,
-                ConnState::Disconnected,
-            )
-        });
+        self.peer_list
+            .entry(id)
+            .or_insert_with(|| PeerMeta::new(addr, None, ConnState::Disconnected));
 
         true
     }

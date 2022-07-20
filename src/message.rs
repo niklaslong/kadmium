@@ -1,5 +1,6 @@
 use std::net::SocketAddr;
 
+use bincode::{Decode, Encode};
 use time::OffsetDateTime;
 
 use crate::tree::RoutingTable;
@@ -12,40 +13,47 @@ type Height = u32;
 
 pub struct RawData;
 
-pub enum Message {
+#[derive(Encode, Decode)]
+pub enum Message<T> {
     Ping(Ping),
     Pong(Pong),
 
     FindKNodes(FindKNodes),
     KNodes(KNodes),
 
-    Chunk(Chunk),
+    Chunk(Chunk<T>),
 }
 
+#[derive(Encode, Decode)]
 pub struct Ping {
-    nonce: Nonce,
+    pub nonce: Nonce,
     // TODO: sending the ID here may not be necessary.
-    id: Id,
+    pub id: Id,
 }
 
+#[derive(Encode, Decode)]
 pub struct Pong {
     _nonce: Nonce,
     // TODO: sending the ID here may not be necessary.
     id: Id,
 }
 
+#[derive(Encode, Decode)]
 pub struct FindKNodes {
     nonce: Nonce,
     id: Id,
 }
 
+#[derive(Encode, Decode)]
 pub struct KNodes {
     _nonce: Nonce,
     nodes: Vec<(Id, SocketAddr)>,
 }
 
-pub struct Chunk {
+#[derive(Encode, Decode)]
+pub struct Chunk<T> {
     height: Height,
+    data: T,
 }
 
 impl RoutingTable {
@@ -106,7 +114,7 @@ impl RoutingTable {
         // continual or only when bootstrapping the network?
     }
 
-    pub fn process_chunk(&self, chunk: Chunk) -> Option<Vec<(Height, SocketAddr)>> {
+    pub fn process_chunk<T>(&self, chunk: Chunk<T>) -> Option<Vec<(Height, SocketAddr)>> {
         // TODO: verify data, perhaps accept a function as a parameter, should return true or false
         // for data verification.
         let is_kosher = true;
