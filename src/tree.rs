@@ -12,16 +12,16 @@ const K: u8 = 20;
 type Id = u128;
 
 #[derive(Debug, Clone, Copy)]
-pub enum ConnState {
+enum ConnState {
     Connected,
     Disconnected,
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct PeerMeta {
-    pub listening_addr: SocketAddr,
-    pub last_seen: Option<OffsetDateTime>,
-    pub conn_state: ConnState,
+struct PeerMeta {
+    listening_addr: SocketAddr,
+    last_seen: Option<OffsetDateTime>,
+    conn_state: ConnState,
 }
 
 impl PeerMeta {
@@ -41,12 +41,12 @@ impl PeerMeta {
 #[derive(Debug, Clone)]
 pub struct RoutingTable {
     // The node's local ID.
-    pub local_id: Id,
-    pub max_bucket_size: u8,
+    local_id: Id,
+    max_bucket_size: u8,
     // The buckets for broadcast purposes.
-    pub buckets: HashMap<u32, HashSet<Id>>,
+    buckets: HashMap<u32, HashSet<Id>>,
     // Contains the connected and disconnected peer information.
-    pub peer_list: HashMap<Id, PeerMeta>,
+    peer_list: HashMap<Id, PeerMeta>,
 }
 
 impl Default for RoutingTable {
@@ -69,6 +69,10 @@ impl RoutingTable {
             max_bucket_size,
             ..Default::default()
         }
+    }
+
+    pub fn local_id(&self) -> Id {
+        self.local_id
     }
 
     // Returns true if the record exists already, false if an attempt was made to insert our local

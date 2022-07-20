@@ -106,7 +106,7 @@ impl RoutingTable {
         // request the response corresponds to.
         Pong {
             _nonce: ping.nonce,
-            id: self.local_id,
+            id: self.local_id(),
         }
     }
 
