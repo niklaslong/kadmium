@@ -41,7 +41,7 @@ impl Reading for Node {
 
     async fn process_message(&self, source: SocketAddr, message: Self::Message) -> io::Result<()> {
         // Scope the lock.
-        let response = { self.routing_table.write().process_message(message) };
+        let response = self.routing_table.write().process_message(message);
 
         match response {
             Some(Response::Unicast(message)) => {
