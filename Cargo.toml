@@ -6,6 +6,9 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-pea2pea = "0.39.0"
 rand = "0.8.5"
 time = "0.3.11"
+
+[dev-dependencies]
+bincode = "2.0.0-rc.1"
+pea2pea = "0.39.0"
