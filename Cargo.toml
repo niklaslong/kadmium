@@ -6,14 +6,20 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bincode = "2.0.0-rc.1"
 rand = "0.8.5"
 time = "0.3.11"
+
+[dependencies.bincode]
+version = "2.0.0-rc.1"
+features = ["serde"]
+
+[dependencies.bytes]
+version = "1.2.0"
+features = ["serde"]
 
 [dev-dependencies]
 anyhow = "1.0.58"
 async-trait = "0.1.56"
-bytes = "1.2.0"
 parking_lot = "0.12.1"
-pea2pea = "0.39.0"
+pea2pea = "0.40.0"
 tokio-util = "0.7.3"
