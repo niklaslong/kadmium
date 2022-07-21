@@ -7,9 +7,10 @@ use kadcast::{
 };
 use parking_lot::RwLock;
 use pea2pea::{
-    protocols::{Reading, Writing},
-    ConnectionSide, Node as PNode, Pea2Pea,
+    protocols::{Handshake, Reading, Writing},
+    Connection, ConnectionSide, Node as PNode, Pea2Pea,
 };
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio_util::codec::{Decoder, Encoder, LengthDelimitedCodec};
 
 fn main() {}
@@ -56,6 +57,57 @@ impl Reading for Node {
         }
 
         Ok(())
+    }
+}
+
+#[async_trait::async_trait]
+impl Handshake for Node {
+    async fn perform_handshake(&self, mut conn: Connection) -> io::Result<Connection> {
+        let local_id = self.routing_table.read().local_id();
+        let peer_side = conn.side();
+        let peer_addr = conn.addr();
+        let stream = self.borrow_stream(&mut conn);
+
+        match peer_side {
+            // The peer initiated the connection.
+            ConnectionSide::Initiator => {
+                // Receive the peer's local ID.
+                let peer_id = stream.read_u128_le().await?;
+
+                // Scope the lock.
+                {
+                    let mut rt_g = self.routing_table.write();
+
+                    if rt_g.can_connect(peer_id).0 {
+                        debug_assert!(rt_g.insert(peer_id, peer_addr));
+                    }
+                }
+
+                // Respond with our local ID.
+                stream.write_u128_le(local_id).await?;
+
+                // Set the peer as connected.
+                debug_assert!(self.routing_table.write().set_connected(peer_id));
+            }
+
+            // The node initiated the connection.
+            ConnectionSide::Responder => {
+                // Send our local ID to the peer.
+                stream.write_u128_le(local_id).await?;
+
+                // Receive the peer's local ID.
+                let peer_id = stream.read_u128_le().await?;
+
+                let mut rt_g = self.routing_table.write();
+
+                // If we initiate the connection, we must have space to connect.
+                debug_assert!(rt_g.can_connect(peer_id).0);
+                rt_g.insert(peer_id, peer_addr);
+                rt_g.set_connected(peer_id);
+            }
+        }
+
+        Ok(conn)
     }
 }
 
