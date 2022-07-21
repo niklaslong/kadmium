@@ -14,6 +14,7 @@ use pea2pea::{
     protocols::{Handshake, Reading, Writing},
     Config, Connection, ConnectionSide, Node as PNode, Pea2Pea,
 };
+use time::OffsetDateTime;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio_util::codec::{Decoder, Encoder, LengthDelimitedCodec};
 
@@ -122,8 +123,14 @@ impl Handshake for Node {
                 // Respond with our local ID.
                 stream.write_u128_le(local_id).await?;
 
-                // Set the peer as connected.
-                debug_assert!(self.routing_table.write().set_connected(peer_id));
+                // Scope the lock.
+                {
+                    let mut rt_g = self.routing_table.write();
+
+                    // Set the peer as connected.
+                    debug_assert!(rt_g.set_connected(peer_id));
+                    rt_g.set_last_seen(peer_id, OffsetDateTime::now_utc());
+                }
             }
 
             // The node initiated the connection.
@@ -134,12 +141,16 @@ impl Handshake for Node {
                 // Receive the peer's local ID.
                 let peer_id = stream.read_u128_le().await?;
 
-                let mut rt_g = self.routing_table.write();
+                // Scope the lock.
+                {
+                    let mut rt_g = self.routing_table.write();
 
-                // If we initiate the connection, we must have space to connect.
-                debug_assert!(rt_g.can_connect(peer_id).0);
-                rt_g.insert(peer_id, peer_addr);
-                rt_g.set_connected(peer_id);
+                    // If we initiate the connection, we must have space to connect.
+                    debug_assert!(rt_g.can_connect(peer_id).0);
+                    rt_g.insert(peer_id, peer_addr);
+                    rt_g.set_connected(peer_id);
+                    rt_g.set_last_seen(peer_id, OffsetDateTime::now_utc());
+                }
             }
         }
 
