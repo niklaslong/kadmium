@@ -1,19 +1,43 @@
-use std::{io, net::SocketAddr, sync::Arc};
+use std::{
+    io,
+    net::{IpAddr, Ipv4Addr, SocketAddr},
+    sync::Arc,
+};
 
 use bytes::BytesMut;
 use kadcast::{
     message::{Message, Response},
-    tree::RoutingTable,
+    tree::{Id, RoutingTable},
 };
 use parking_lot::RwLock;
 use pea2pea::{
     protocols::{Handshake, Reading, Writing},
-    Connection, ConnectionSide, Node as PNode, Pea2Pea,
+    Config, Connection, ConnectionSide, Node as PNode, Pea2Pea,
 };
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio_util::codec::{Decoder, Encoder, LengthDelimitedCodec};
 
-fn main() {}
+#[tokio::main]
+async fn main() {
+    let node_a = Node::new(0).await;
+    node_a.enable_handshake().await;
+    node_a.enable_reading().await;
+    node_a.enable_writing().await;
+
+    let node_b = Node::new(1).await;
+    node_b.enable_handshake().await;
+    node_b.enable_reading().await;
+    node_b.enable_writing().await;
+
+    node_a
+        .node()
+        .connect(node_b.node().listening_addr().unwrap())
+        .await
+        .unwrap();
+
+    dbg!(node_a.routing_table);
+    dbg!(node_b.routing_table);
+}
 
 #[derive(Clone)]
 struct Node {
@@ -21,7 +45,19 @@ struct Node {
     routing_table: Arc<RwLock<RoutingTable>>,
 }
 
-impl Node {}
+impl Node {
+    async fn new(id: Id) -> Self {
+        Self {
+            pnode: PNode::new(Config {
+                listener_ip: Some(IpAddr::V4(Ipv4Addr::LOCALHOST)),
+                ..Default::default()
+            })
+            .await
+            .unwrap(),
+            routing_table: Arc::new(RwLock::new(RoutingTable::new(id, 20))),
+        }
+    }
+}
 
 impl Pea2Pea for Node {
     fn node(&self) -> &PNode {

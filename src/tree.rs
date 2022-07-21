@@ -9,7 +9,7 @@ use time::OffsetDateTime;
 
 const K: u8 = 20;
 
-type Id = u128;
+pub type Id = u128;
 
 #[derive(Debug, Clone, Copy)]
 enum ConnState {
