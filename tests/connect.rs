@@ -1,3 +1,4 @@
+#![cfg(feature = "full")]
 #![feature(int_log)]
 
 use kadmium::message::{FindKNodes, KNodes, Message, Ping, Pong};

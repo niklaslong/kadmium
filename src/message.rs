@@ -1,5 +1,6 @@
 use std::net::SocketAddr;
 
+#[cfg(feature = "codec")]
 use bincode::{Decode, Encode};
 use bytes::Bytes;
 use time::OffsetDateTime;
@@ -17,7 +18,8 @@ pub enum Response {
     Broadcast(Vec<(SocketAddr, Message)>),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Encode, Decode)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "codec", derive(Encode, Decode))]
 pub enum Message {
     Ping(Ping),
     Pong(Pong),
@@ -40,36 +42,42 @@ impl Message {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Encode, Decode)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "codec", derive(Encode, Decode))]
 pub struct Ping {
     pub nonce: Nonce,
     // TODO: sending the ID here may not be necessary.
     pub id: Id,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Encode, Decode)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "codec", derive(Encode, Decode))]
 pub struct Pong {
     pub nonce: Nonce,
     // TODO: sending the ID here may not be necessary.
     pub id: Id,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Encode, Decode)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "codec", derive(Encode, Decode))]
 pub struct FindKNodes {
     pub nonce: Nonce,
     pub id: Id,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Encode, Decode)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "codec", derive(Encode, Decode))]
 pub struct KNodes {
     pub nonce: Nonce,
     pub nodes: Vec<(Id, SocketAddr)>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Encode, Decode)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "codec", derive(Encode, Decode))]
 pub struct Chunk {
     height: Height,
-    #[bincode(with_serde)]
+
+    #[cfg_attr(feature = "codec", bincode(with_serde))]
     data: Bytes,
 }
 

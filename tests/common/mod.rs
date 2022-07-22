@@ -1,3 +1,5 @@
+#![cfg(feature = "full")]
+
 use std::{
     collections::HashMap,
     io,
