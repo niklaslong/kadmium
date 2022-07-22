@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 rand = "0.8.5"
 time = "0.3.11"
+tokio-util = "0.7.3"
 
 [dependencies.bincode]
 version = "2.0.0-rc.1"
@@ -22,7 +23,6 @@ anyhow = "1.0.58"
 async-trait = "0.1.56"
 parking_lot = "0.12.1"
 pea2pea = "0.40.0"
-tokio-util = "0.7.3"
 
 [dev-dependencies.tokio]
 version = "1.20.0"

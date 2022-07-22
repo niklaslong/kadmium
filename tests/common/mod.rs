@@ -5,8 +5,8 @@ use std::{
     sync::Arc,
 };
 
-use bytes::{Bytes, BytesMut};
 use kadmium::{
+    codec::MessageCodec,
     message::{Message, Nonce, Response},
     router::{Id, RoutingTable},
 };
@@ -17,7 +17,6 @@ use pea2pea::{
 };
 use time::OffsetDateTime;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio_util::codec::{Decoder, Encoder, LengthDelimitedCodec};
 use tracing::*;
 use tracing_subscriber::{fmt, EnvFilter};
 
@@ -63,9 +62,7 @@ impl Reading for KadNode {
     type Codec = MessageCodec;
 
     fn codec(&self, _addr: SocketAddr, _side: ConnectionSide) -> Self::Codec {
-        MessageCodec {
-            codec: LengthDelimitedCodec::new(),
-        }
+        MessageCodec::new()
     }
 
     async fn process_message(&self, source: SocketAddr, message: Self::Message) -> io::Result<()> {
@@ -183,69 +180,67 @@ impl Writing for KadNode {
     type Codec = MessageCodec;
 
     fn codec(&self, _addr: SocketAddr, _side: ConnectionSide) -> Self::Codec {
-        MessageCodec {
-            codec: LengthDelimitedCodec::new(),
-        }
+        MessageCodec::new()
     }
 }
 
-pub struct MessageCodec {
-    codec: LengthDelimitedCodec,
-}
-
-impl MessageCodec {
-    fn new() -> Self {
-        Self {
-            codec: LengthDelimitedCodec::new(),
-        }
-    }
-}
-
-impl Decoder for MessageCodec {
-    type Item = Message;
-    type Error = io::Error;
-
-    fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
-        let bytes = match self.codec.decode(src)? {
-            Some(bytes) => bytes,
-            None => return Ok(None),
-        };
-
-        match bincode::decode_from_slice(&bytes, bincode::config::standard()) {
-            Ok((message, _length)) => Ok(Some(message)),
-            Err(e) => Err(io::Error::new(io::ErrorKind::Other, e)),
-        }
-    }
-}
-
-impl Encoder<Message> for MessageCodec {
-    type Error = io::Error;
-
-    fn encode(&mut self, message: Message, dst: &mut BytesMut) -> Result<(), Self::Error> {
-        let _ = match bincode::encode_to_vec(message, bincode::config::standard()) {
-            Ok(bytes) => self.codec.encode(Bytes::copy_from_slice(&bytes), dst),
-            Err(e) => return Err(io::Error::new(io::ErrorKind::Other, e)),
-        };
-
-        Ok(())
-    }
-}
-
-#[test]
-fn codec() {
-    use kadmium::message::{Message, Ping};
-    use rand::{thread_rng, Rng};
-
-    let mut rng = thread_rng();
-
-    let message = Message::Ping(Ping {
-        nonce: rng.gen(),
-        id: rng.gen(),
-    });
-
-    let mut codec = MessageCodec::new();
-    let mut dst = BytesMut::new();
-
-    assert!(codec.encode(message.clone(), &mut dst).is_ok());
-    assert_eq!(codec.decode(&mut dst).unwrap().unwrap(), message);
-}
+// pub struct MessageCodec {
+//     codec: LengthDelimitedCodec,
+// }
+//
+// impl MessageCodec {
+//     fn new() -> Self {
+//         Self {
+//             codec: LengthDelimitedCodec::new(),
+//         }
+//     }
+// }
+//
+// impl Decoder for MessageCodec {
+//     type Item = Message;
+//     type Error = io::Error;
+//
+//     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
+//         let bytes = match self.codec.decode(src)? {
+//             Some(bytes) => bytes,
+//             None => return Ok(None),
+//         };
+//
+//         match bincode::decode_from_slice(&bytes, bincode::config::standard()) {
+//             Ok((message, _length)) => Ok(Some(message)),
+//             Err(e) => Err(io::Error::new(io::ErrorKind::Other, e)),
+//         }
+//     }
+// }
+//
+// impl Encoder<Message> for MessageCodec {
+//     type Error = io::Error;
+//
+//     fn encode(&mut self, message: Message, dst: &mut BytesMut) -> Result<(), Self::Error> {
+//         let _ = match bincode::encode_to_vec(message, bincode::config::standard()) {
+//             Ok(bytes) => self.codec.encode(Bytes::copy_from_slice(&bytes), dst),
+//             Err(e) => return Err(io::Error::new(io::ErrorKind::Other, e)),
+//         };
+//
+//         Ok(())
+//     }
+// }
+//
+// #[test]
+// fn codec_ping() {
+//     use kadmium::message::{Message, Ping};
+//     use rand::{thread_rng, Rng};
+//
+//     let mut rng = thread_rng();
+//
+//     let message = Message::Ping(Ping {
+//         nonce: rng.gen(),
+//         id: rng.gen(),
+//     });
+//
+//     let mut codec = MessageCodec::new();
+//     let mut dst = BytesMut::new();
+//
+//     assert!(codec.encode(message.clone(), &mut dst).is_ok());
+//     assert_eq!(codec.decode(&mut dst).unwrap().unwrap(), message);
+// }
