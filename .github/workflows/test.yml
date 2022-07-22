@@ -7,8 +7,8 @@ on:
 name: tests
 
 jobs:
-  tests:
-    name: cargo test
+  test:
+    name: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -17,7 +17,19 @@ jobs:
           profile: minimal
           toolchain: nightly
           override: true
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --release
+
+      - name: no default features
+        run: cargo test --no-default-features
+
+      - name: default features
+        run: cargo test --features codec
+
+      - name: codec features
+        run: cargo test --features codec
+
+      - name: full features
+        run: cargo test --features full
+
+      - name: all features
+        run: cargo test --all-features
+
