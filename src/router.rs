@@ -212,13 +212,6 @@ impl RoutingTable {
 
         Some(selected_peers)
     }
-
-    // Test helpers
-
-    #[doc(hidden)]
-    pub fn buckets(&self) -> &HashMap<u32, HashSet<Id>> {
-        &self.buckets
-    }
 }
 
 #[cfg(test)]
