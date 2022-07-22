@@ -21,6 +21,7 @@ use tokio_util::codec::{Decoder, Encoder, LengthDelimitedCodec};
 use tracing::*;
 use tracing_subscriber::{fmt, EnvFilter};
 
+#[allow(dead_code)]
 pub fn enable_tracing() {
     fmt()
         .with_test_writer()

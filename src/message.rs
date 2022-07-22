@@ -56,8 +56,8 @@ pub struct Pong {
 
 #[derive(Debug, Clone, PartialEq, Eq, Encode, Decode)]
 pub struct FindKNodes {
-    nonce: Nonce,
-    id: Id,
+    pub nonce: Nonce,
+    pub id: Id,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Encode, Decode)]
