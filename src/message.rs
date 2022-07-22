@@ -4,15 +4,13 @@ use bincode::{Decode, Encode};
 use bytes::Bytes;
 use time::OffsetDateTime;
 
-use crate::tree::RoutingTable;
+use crate::router::RoutingTable;
 
 const K: u8 = 20;
 
 type Nonce = u128;
 type Id = u128;
 type Height = u32;
-
-pub struct RawData;
 
 pub enum Response {
     Unicast(Message),

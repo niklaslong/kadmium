@@ -5,14 +5,14 @@ use std::{
 };
 
 use bytes::BytesMut;
-use kadcast::{
+use kadmium::{
     message::{Message, Response},
-    tree::{Id, RoutingTable},
+    router::{Id, RoutingTable},
 };
 use parking_lot::RwLock;
 use pea2pea::{
     protocols::{Handshake, Reading, Writing},
-    Config, Connection, ConnectionSide, Node as PNode, Pea2Pea,
+    Config, Connection, ConnectionSide, Node, Pea2Pea,
 };
 use time::OffsetDateTime;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -20,12 +20,12 @@ use tokio_util::codec::{Decoder, Encoder, LengthDelimitedCodec};
 
 #[tokio::main]
 async fn main() {
-    let node_a = Node::new(0).await;
+    let node_a = KadNode::new(0).await;
     node_a.enable_handshake().await;
     node_a.enable_reading().await;
     node_a.enable_writing().await;
 
-    let node_b = Node::new(1).await;
+    let node_b = KadNode::new(1).await;
     node_b.enable_handshake().await;
     node_b.enable_reading().await;
     node_b.enable_writing().await;
@@ -41,15 +41,15 @@ async fn main() {
 }
 
 #[derive(Clone)]
-struct Node {
-    pnode: PNode,
+struct KadNode {
+    node: Node,
     routing_table: Arc<RwLock<RoutingTable>>,
 }
 
-impl Node {
+impl KadNode {
     async fn new(id: Id) -> Self {
         Self {
-            pnode: PNode::new(Config {
+            node: Node::new(Config {
                 listener_ip: Some(IpAddr::V4(Ipv4Addr::LOCALHOST)),
                 ..Default::default()
             })
@@ -60,14 +60,14 @@ impl Node {
     }
 }
 
-impl Pea2Pea for Node {
-    fn node(&self) -> &PNode {
-        &self.pnode
+impl Pea2Pea for KadNode {
+    fn node(&self) -> &Node {
+        &self.node
     }
 }
 
 #[async_trait::async_trait]
-impl Reading for Node {
+impl Reading for KadNode {
     type Message = Message;
     type Codec = MessageCodec;
 
@@ -98,7 +98,7 @@ impl Reading for Node {
 }
 
 #[async_trait::async_trait]
-impl Handshake for Node {
+impl Handshake for KadNode {
     async fn perform_handshake(&self, mut conn: Connection) -> io::Result<Connection> {
         let local_id = self.routing_table.read().local_id();
         let peer_side = conn.side();
@@ -158,7 +158,7 @@ impl Handshake for Node {
     }
 }
 
-impl Writing for Node {
+impl Writing for KadNode {
     type Message = Message;
     type Codec = MessageCodec;
 
