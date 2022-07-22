@@ -17,6 +17,12 @@ impl MessageCodec {
     }
 }
 
+impl Default for MessageCodec {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Decoder for MessageCodec {
     type Item = Message;
     type Error = io::Error;
