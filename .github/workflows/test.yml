@@ -18,18 +18,18 @@ jobs:
           toolchain: nightly
           override: true
 
-      - name: no default features
+      - name: Run tests with no default features
         run: cargo test --no-default-features
 
-      - name: default features
+      - name: Run tests with default features
+        run: cargo test
+
+      - name: Run tests with codec features
         run: cargo test --features codec
 
-      - name: codec features
-        run: cargo test --features codec
-
-      - name: full features
+      - name: Run tests with full features
         run: cargo test --features full
 
-      - name: all features
+      - name: Run tests with all features
         run: cargo test --all-features
 
