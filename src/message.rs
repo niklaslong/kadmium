@@ -8,7 +8,7 @@ use crate::router::RoutingTable;
 
 const K: u8 = 20;
 
-type Nonce = u128;
+pub type Nonce = u128;
 type Id = u128;
 type Height = u32;
 
@@ -17,7 +17,7 @@ pub enum Response {
     Broadcast(Vec<(SocketAddr, Message)>),
 }
 
-#[derive(Encode, Decode)]
+#[derive(Debug, Clone, PartialEq, Encode, Decode)]
 pub enum Message {
     Ping(Ping),
     Pong(Pong),
@@ -28,33 +28,45 @@ pub enum Message {
     Chunk(Chunk),
 }
 
-#[derive(Encode, Decode)]
+impl Message {
+    pub fn nonce(&self) -> Option<Nonce> {
+        match self {
+            Message::Ping(ping) => Some(ping.nonce),
+            Message::Pong(pong) => Some(pong.nonce),
+            Message::FindKNodes(find_k_nodes) => Some(find_k_nodes.nonce),
+            Message::KNodes(k_nodes) => Some(k_nodes.nonce),
+            Message::Chunk(_chunk) => None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Encode, Decode)]
 pub struct Ping {
     pub nonce: Nonce,
     // TODO: sending the ID here may not be necessary.
     pub id: Id,
 }
 
-#[derive(Encode, Decode)]
+#[derive(Debug, Clone, PartialEq, Encode, Decode)]
 pub struct Pong {
-    _nonce: Nonce,
+    nonce: Nonce,
     // TODO: sending the ID here may not be necessary.
     id: Id,
 }
 
-#[derive(Encode, Decode)]
+#[derive(Debug, Clone, PartialEq, Encode, Decode)]
 pub struct FindKNodes {
     nonce: Nonce,
     id: Id,
 }
 
-#[derive(Encode, Decode)]
+#[derive(Debug, Clone, PartialEq, Encode, Decode)]
 pub struct KNodes {
-    _nonce: Nonce,
+    nonce: Nonce,
     nodes: Vec<(Id, SocketAddr)>,
 }
 
-#[derive(Encode, Decode)]
+#[derive(Debug, Clone, PartialEq, Encode, Decode)]
 pub struct Chunk {
     height: Height,
     #[bincode(with_serde)]
@@ -103,7 +115,7 @@ impl RoutingTable {
         // Prepare a response, send back the same nonce so the original sender can identify the
         // request the response corresponds to.
         Pong {
-            _nonce: ping.nonce,
+            nonce: ping.nonce,
             id: self.local_id(),
         }
     }
@@ -121,7 +133,7 @@ impl RoutingTable {
         let k_closest_nodes = self.find_k_closest(find_k_nodes.id, K as usize);
 
         KNodes {
-            _nonce: find_k_nodes.nonce,
+            nonce: find_k_nodes.nonce,
             nodes: k_closest_nodes,
         }
     }
