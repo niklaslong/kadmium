@@ -17,7 +17,7 @@ pub enum Response {
     Broadcast(Vec<(SocketAddr, Message)>),
 }
 
-#[derive(Debug, Clone, PartialEq, Encode, Decode)]
+#[derive(Debug, Clone, PartialEq, Eq, Encode, Decode)]
 pub enum Message {
     Ping(Ping),
     Pong(Pong),
@@ -40,33 +40,33 @@ impl Message {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Encode, Decode)]
+#[derive(Debug, Clone, PartialEq, Eq, Encode, Decode)]
 pub struct Ping {
     pub nonce: Nonce,
     // TODO: sending the ID here may not be necessary.
     pub id: Id,
 }
 
-#[derive(Debug, Clone, PartialEq, Encode, Decode)]
+#[derive(Debug, Clone, PartialEq, Eq, Encode, Decode)]
 pub struct Pong {
     nonce: Nonce,
     // TODO: sending the ID here may not be necessary.
     id: Id,
 }
 
-#[derive(Debug, Clone, PartialEq, Encode, Decode)]
+#[derive(Debug, Clone, PartialEq, Eq, Encode, Decode)]
 pub struct FindKNodes {
     nonce: Nonce,
     id: Id,
 }
 
-#[derive(Debug, Clone, PartialEq, Encode, Decode)]
+#[derive(Debug, Clone, PartialEq, Eq, Encode, Decode)]
 pub struct KNodes {
     nonce: Nonce,
     nodes: Vec<(Id, SocketAddr)>,
 }
 
-#[derive(Debug, Clone, PartialEq, Encode, Decode)]
+#[derive(Debug, Clone, PartialEq, Eq, Encode, Decode)]
 pub struct Chunk {
     height: Height,
     #[bincode(with_serde)]
