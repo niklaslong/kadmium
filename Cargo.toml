@@ -35,10 +35,10 @@ pea2pea = "0.40.0"
 version = "1.20.0"
 features = ["full"]
 
-[dependencies.tracing]
+[dev-dependencies.tracing]
 version = "0.1.35"
 default-features = false
 
-[dependencies.tracing-subscriber]
+[dev-dependencies.tracing-subscriber]
 version = "0.3.11"
 features = [ "env-filter", "fmt" ]

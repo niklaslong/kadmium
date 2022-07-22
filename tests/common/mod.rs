@@ -1,4 +1,4 @@
-#![cfg(feature = "full")]
+#![cfg(feature = "codec")]
 
 use std::{
     collections::HashMap,

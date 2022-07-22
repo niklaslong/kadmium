@@ -1,4 +1,4 @@
-#![cfg(feature = "full")]
+#![cfg(feature = "codec")]
 #![feature(int_log)]
 
 use kadmium::message::{FindKNodes, KNodes, Message, Ping, Pong};
