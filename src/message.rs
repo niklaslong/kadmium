@@ -75,10 +75,10 @@ pub struct KNodes {
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "codec", derive(Encode, Decode))]
 pub struct Chunk {
-    height: Height,
+    pub height: Height,
 
     #[cfg_attr(feature = "codec", bincode(with_serde))]
-    data: Bytes,
+    pub data: Bytes,
 }
 
 impl RoutingTable {

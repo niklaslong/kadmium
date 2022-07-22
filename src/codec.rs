@@ -58,7 +58,7 @@ mod tests {
     use rand::{thread_rng, Rng};
 
     use super::*;
-    use crate::message::Ping;
+    use crate::message::{Chunk, FindKNodes, KNodes, Ping, Pong};
 
     #[test]
     fn codec_ping() {
@@ -67,6 +67,74 @@ mod tests {
         let message = Message::Ping(Ping {
             nonce: rng.gen(),
             id: rng.gen(),
+        });
+
+        let mut codec = MessageCodec::new();
+        let mut dst = BytesMut::new();
+
+        assert!(codec.encode(message.clone(), &mut dst).is_ok());
+        assert_eq!(codec.decode(&mut dst).unwrap().unwrap(), message);
+    }
+
+    #[test]
+    fn codec_pong() {
+        let mut rng = thread_rng();
+
+        let message = Message::Pong(Pong {
+            nonce: rng.gen(),
+            id: rng.gen(),
+        });
+
+        let mut codec = MessageCodec::new();
+        let mut dst = BytesMut::new();
+
+        assert!(codec.encode(message.clone(), &mut dst).is_ok());
+        assert_eq!(codec.decode(&mut dst).unwrap().unwrap(), message);
+    }
+
+    #[test]
+    fn codec_find_k_nodes() {
+        let mut rng = thread_rng();
+
+        let message = Message::FindKNodes(FindKNodes {
+            nonce: rng.gen(),
+            id: rng.gen(),
+        });
+
+        let mut codec = MessageCodec::new();
+        let mut dst = BytesMut::new();
+
+        assert!(codec.encode(message.clone(), &mut dst).is_ok());
+        assert_eq!(codec.decode(&mut dst).unwrap().unwrap(), message);
+    }
+
+    #[test]
+    fn codec_k_nodes() {
+        let mut rng = thread_rng();
+
+        let message = Message::KNodes(KNodes {
+            nonce: rng.gen(),
+            nodes: vec![(0, "127.0.0.1:0".parse().unwrap())],
+        });
+
+        let mut codec = MessageCodec::new();
+        let mut dst = BytesMut::new();
+
+        assert!(codec.encode(message.clone(), &mut dst).is_ok());
+        assert_eq!(codec.decode(&mut dst).unwrap().unwrap(), message);
+    }
+
+    #[test]
+    fn codec_chunk() {
+        use rand::Fill;
+
+        let mut rng = thread_rng();
+        let mut data = [0u8; 32];
+        data.try_fill(&mut rng).unwrap();
+
+        let message = Message::Chunk(Chunk {
+            height: rng.gen(),
+            data: Bytes::copy_from_slice(&data),
         });
 
         let mut codec = MessageCodec::new();
