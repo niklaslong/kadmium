@@ -62,8 +62,8 @@ pub struct FindKNodes {
 
 #[derive(Debug, Clone, PartialEq, Eq, Encode, Decode)]
 pub struct KNodes {
-    nonce: Nonce,
-    nodes: Vec<(Id, SocketAddr)>,
+    pub nonce: Nonce,
+    pub nodes: Vec<(Id, SocketAddr)>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Encode, Decode)]

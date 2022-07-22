@@ -104,7 +104,7 @@ impl Handshake for KadNode {
     async fn perform_handshake(&self, mut conn: Connection) -> io::Result<Connection> {
         let local_id = self.routing_table.read().local_id();
         let peer_side = conn.side();
-        let peer_addr = conn.addr();
+        let mut peer_addr = conn.addr();
         let stream = self.borrow_stream(&mut conn);
 
         match peer_side {
@@ -112,6 +112,12 @@ impl Handshake for KadNode {
             ConnectionSide::Initiator => {
                 // Receive the peer's local ID.
                 let peer_id = stream.read_u128_le().await?;
+                let peer_port = stream.read_u16_le().await?;
+
+                // Ports will be different since connection was opened by the peer (a new stream is
+                // created per connection).
+                assert_ne!(peer_addr.port(), peer_port);
+                peer_addr.set_port(peer_port);
 
                 // Scope the lock.
                 {
@@ -122,8 +128,11 @@ impl Handshake for KadNode {
                     }
                 }
 
-                // Respond with our local ID.
+                // Respond with our local ID and port.
                 stream.write_u128_le(local_id).await?;
+                stream
+                    .write_u16_le(self.node().listening_addr().unwrap().port())
+                    .await?;
 
                 // Scope the lock.
                 {
@@ -139,9 +148,18 @@ impl Handshake for KadNode {
             ConnectionSide::Responder => {
                 // Send our local ID to the peer.
                 stream.write_u128_le(local_id).await?;
+                stream
+                    .write_u16_le(self.node().listening_addr().unwrap().port())
+                    .await?;
 
-                // Receive the peer's local ID.
+                // Receive the peer's local ID and port.
                 let peer_id = stream.read_u128_le().await?;
+                let peer_port = stream.read_u16_le().await?;
+
+                // Ports should be the same, since we initiated the connection to the peer's
+                // listener.
+                assert_eq!(peer_addr.port(), peer_port);
+                peer_addr.set_port(peer_port);
 
                 // Scope the lock.
                 {
