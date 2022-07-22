@@ -18,36 +18,14 @@ use time::OffsetDateTime;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio_util::codec::{Decoder, Encoder, LengthDelimitedCodec};
 
-#[tokio::main]
-async fn main() {
-    let node_a = KadNode::new(0).await;
-    node_a.enable_handshake().await;
-    node_a.enable_reading().await;
-    node_a.enable_writing().await;
-
-    let node_b = KadNode::new(1).await;
-    node_b.enable_handshake().await;
-    node_b.enable_reading().await;
-    node_b.enable_writing().await;
-
-    node_a
-        .node()
-        .connect(node_b.node().listening_addr().unwrap())
-        .await
-        .unwrap();
-
-    dbg!(node_a.routing_table);
-    dbg!(node_b.routing_table);
-}
-
 #[derive(Clone)]
-struct KadNode {
-    node: Node,
-    routing_table: Arc<RwLock<RoutingTable>>,
+pub struct KadNode {
+    pub node: Node,
+    pub routing_table: Arc<RwLock<RoutingTable>>,
 }
 
 impl KadNode {
-    async fn new(id: Id) -> Self {
+    pub async fn new(id: Id) -> Self {
         Self {
             node: Node::new(Config {
                 listener_ip: Some(IpAddr::V4(Ipv4Addr::LOCALHOST)),
@@ -169,7 +147,7 @@ impl Writing for KadNode {
     }
 }
 
-struct MessageCodec {
+pub struct MessageCodec {
     codec: LengthDelimitedCodec,
 }
 
