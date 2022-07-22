@@ -1,12 +1,13 @@
 use std::{
+    collections::HashMap,
     io,
     net::{IpAddr, Ipv4Addr, SocketAddr},
     sync::Arc,
 };
 
-use bytes::BytesMut;
+use bytes::{Bytes, BytesMut};
 use kadmium::{
-    message::{Message, Response},
+    message::{Message, Nonce, Response},
     router::{Id, RoutingTable},
 };
 use parking_lot::RwLock;
@@ -17,11 +18,21 @@ use pea2pea::{
 use time::OffsetDateTime;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio_util::codec::{Decoder, Encoder, LengthDelimitedCodec};
+use tracing::*;
+use tracing_subscriber::{fmt, EnvFilter};
+
+pub fn enable_tracing() {
+    fmt()
+        .with_test_writer()
+        .with_env_filter(EnvFilter::from_default_env())
+        .init();
+}
 
 #[derive(Clone)]
 pub struct KadNode {
     pub node: Node,
     pub routing_table: Arc<RwLock<RoutingTable>>,
+    pub received_messages: Arc<RwLock<HashMap<Nonce, Message>>>,
 }
 
 impl KadNode {
@@ -34,6 +45,7 @@ impl KadNode {
             .await
             .unwrap(),
             routing_table: Arc::new(RwLock::new(RoutingTable::new(id, 20))),
+            received_messages: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 }
@@ -56,6 +68,17 @@ impl Reading for KadNode {
     }
 
     async fn process_message(&self, source: SocketAddr, message: Self::Message) -> io::Result<()> {
+        let span = self.node().span().clone();
+        debug!(parent: span.clone(), "processing {:?}", message);
+
+        if let Some(nonce) = message.nonce() {
+            assert!(self
+                .received_messages
+                .write()
+                .insert(nonce, message.clone())
+                .is_none())
+        }
+
         // Scope the lock.
         let response = self.routing_table.write().process_message(message);
 
@@ -94,7 +117,7 @@ impl Handshake for KadNode {
                     let mut rt_g = self.routing_table.write();
 
                     if rt_g.can_connect(peer_id).0 {
-                        debug_assert!(rt_g.insert(peer_id, peer_addr));
+                        assert!(rt_g.insert(peer_id, peer_addr));
                     }
                 }
 
@@ -106,7 +129,7 @@ impl Handshake for KadNode {
                     let mut rt_g = self.routing_table.write();
 
                     // Set the peer as connected.
-                    debug_assert!(rt_g.set_connected(peer_id));
+                    assert!(rt_g.set_connected(peer_id));
                     rt_g.set_last_seen(peer_id, OffsetDateTime::now_utc());
                 }
             }
@@ -124,9 +147,9 @@ impl Handshake for KadNode {
                     let mut rt_g = self.routing_table.write();
 
                     // If we initiate the connection, we must have space to connect.
-                    debug_assert!(rt_g.can_connect(peer_id).0);
-                    rt_g.insert(peer_id, peer_addr);
-                    rt_g.set_connected(peer_id);
+                    assert!(rt_g.can_connect(peer_id).0);
+                    assert!(rt_g.insert(peer_id, peer_addr));
+                    assert!(rt_g.set_connected(peer_id));
                     rt_g.set_last_seen(peer_id, OffsetDateTime::now_utc());
                 }
             }
@@ -151,6 +174,14 @@ pub struct MessageCodec {
     codec: LengthDelimitedCodec,
 }
 
+impl MessageCodec {
+    fn new() -> Self {
+        Self {
+            codec: LengthDelimitedCodec::new(),
+        }
+    }
+}
+
 impl Decoder for MessageCodec {
     type Item = Message;
     type Error = io::Error;
@@ -172,10 +203,30 @@ impl Encoder<Message> for MessageCodec {
     type Error = io::Error;
 
     fn encode(&mut self, message: Message, dst: &mut BytesMut) -> Result<(), Self::Error> {
-        if let Err(e) = bincode::encode_into_slice(message, dst, bincode::config::standard()) {
-            return Err(io::Error::new(io::ErrorKind::Other, e));
-        }
+        let _ = match bincode::encode_to_vec(message, bincode::config::standard()) {
+            Ok(bytes) => self.codec.encode(Bytes::copy_from_slice(&bytes), dst),
+            Err(e) => return Err(io::Error::new(io::ErrorKind::Other, e)),
+        };
 
         Ok(())
     }
+}
+
+#[test]
+fn codec() {
+    use kadmium::message::{Message, Ping};
+    use rand::{thread_rng, Rng};
+
+    let mut rng = thread_rng();
+
+    let message = Message::Ping(Ping {
+        nonce: rng.gen(),
+        id: rng.gen(),
+    });
+
+    let mut codec = MessageCodec::new();
+    let mut dst = BytesMut::new();
+
+    assert!(codec.encode(message.clone(), &mut dst).is_ok());
+    assert_eq!(codec.decode(&mut dst).unwrap().unwrap(), message);
 }
