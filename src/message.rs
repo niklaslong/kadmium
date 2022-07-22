@@ -49,9 +49,9 @@ pub struct Ping {
 
 #[derive(Debug, Clone, PartialEq, Eq, Encode, Decode)]
 pub struct Pong {
-    nonce: Nonce,
+    pub nonce: Nonce,
     // TODO: sending the ID here may not be necessary.
-    id: Id,
+    pub id: Id,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Encode, Decode)]

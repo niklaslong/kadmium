@@ -1,6 +1,6 @@
 #![feature(int_log)]
 
-use kadmium::message::{FindKNodes, Message, Ping};
+use kadmium::message::{FindKNodes, Message, Ping, Pong};
 use pea2pea::{
     protocols::{Handshake, Reading, Writing},
     Pea2Pea,
@@ -63,21 +63,23 @@ async fn ping_pong_two_nodes() {
         .unwrap();
 
     let nonce = rng.gen();
+    let ping = Message::Ping(Ping {
+        nonce,
+        id: node_a.routing_table.read().local_id(),
+    });
+    let pong = Message::Pong(Pong {
+        nonce,
+        id: node_b.routing_table.read().local_id(),
+    });
 
     assert!(node_a
-        .unicast(
-            node_b.node().listening_addr().unwrap(),
-            Message::Ping(Ping {
-                nonce,
-                id: node_a.routing_table.read().local_id(),
-            }),
-        )
+        .unicast(node_b.node().listening_addr().unwrap(), ping.clone())
         .is_ok());
 
     // Wait for PING to be received and PONG to come back.
     tokio::time::sleep(std::time::Duration::from_millis(10)).await;
-    assert!(node_b.received_messages.read().contains_key(&nonce));
-    assert!(node_a.received_messages.read().contains_key(&nonce));
+    assert_eq!(node_b.received_messages.read().get(&nonce), Some(&ping));
+    assert_eq!(node_a.received_messages.read().get(&nonce), Some(&pong));
 }
 
 #[tokio::test]
