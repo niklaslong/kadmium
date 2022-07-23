@@ -20,7 +20,7 @@ use crate::common::{enable_tracing, KadNode};
 async fn broadcast_full_mesh() {
     // enable_tracing();
 
-    const N: usize = 100;
+    const N: usize = 10;
     let mut rng = thread_rng();
 
     let mut nodes = Vec::with_capacity(N);
@@ -34,6 +34,7 @@ async fn broadcast_full_mesh() {
         nodes.push(node);
     }
 
+    // If this fails, it may be because the `ulimit` is not high enough.
     assert!(connect_nodes(&nodes, Topology::Mesh).await.is_ok());
 
     let broadcaster = nodes.pop().unwrap();
@@ -58,7 +59,7 @@ async fn broadcast_full_mesh() {
     }
 
     // This needs to be longer when the test is run with more nodes.
-    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+    tokio::time::sleep(std::time::Duration::from_millis(10)).await;
 
     for node in nodes {
         let received_messages_g = node.received_messages.read();
