@@ -2,6 +2,14 @@
 name = "kadmium"
 version = "0.1.0"
 edition = "2021"
+authors = ["niklaslong <niklas@long.ch>"]
+description = "A broadcast protocol implementation based on Kadcast."
+license = "MIT"
+repository = "https://github.com/niklaslong/kadmium"
+documentation = "https://docs.rs/kadmium"
+readme = "README.md"
+categories = ["algorithms", "network-programming"]
+keywords = ["p2p", "peer-to-peer", "networking"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [features]
