@@ -110,16 +110,17 @@ impl RoutingTable {
         }
     }
 
-    /// Return's this router's local id.
+    /// Returns this router's local ID.
     pub fn local_id(&self) -> Id {
         self.local_id
     }
 
+    /// Returns the ID corresponding to the address, if it exists.
     pub fn peer_id(&self, addr: SocketAddr) -> Option<Id> {
         self.id_list.get(&addr).copied()
     }
 
-    /// Returns true if the record exists already or was inserted, false if an attempt was made to
+    /// Returns `true` if the record exists already or was inserted, `false` if an attempt was made to
     /// insert our local ID.
     pub fn insert(&mut self, id: Id, addr: SocketAddr) -> bool {
         // Buckets should only contain connected peers. The other structures should track
@@ -155,7 +156,7 @@ impl RoutingTable {
         true
     }
 
-    /// Returns if there is space in the particular bucket for that ID and the appropriate bucket
+    /// Returns whether there is space or not in the particular bucket for that ID and the appropriate bucket
     /// index if there is.
     pub fn can_connect(&mut self, id: Id) -> (bool, Option<u32>) {
         // // Calculate the distance by XORing the ids.
@@ -200,7 +201,7 @@ impl RoutingTable {
         }
     }
 
-    /// Sets the peer as connected on the router, returning false if there is no room to connect
+    /// Sets the peer as connected on the router, returning `false` if there is no room to connect
     /// the peer.
     pub fn set_connected(&mut self, id: Id) -> bool {
         match self.can_connect(id) {
