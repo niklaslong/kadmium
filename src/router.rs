@@ -82,7 +82,7 @@ pub struct RoutingTable {
     local_id: Id,
     max_bucket_size: u8,
     // The buckets constructed for broadcast purposes (only contains connected IDs).
-    pub buckets: HashMap<u32, HashSet<Id>>,
+    buckets: HashMap<u32, HashSet<Id>>,
     // Maps IDs to peer meta data (both connected and disconnected).
     peer_list: HashMap<Id, PeerMeta>,
     // Maps peer addresses to peer IDs (connected and disconnected).
