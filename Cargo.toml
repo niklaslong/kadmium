@@ -34,7 +34,6 @@ version = "0.7.3"
 optional = true
 
 [dev-dependencies]
-anyhow = "1.0.58"
 async-trait = "0.1.56"
 parking_lot = "0.12.1"
 pea2pea = "0.40.0"
