@@ -116,7 +116,7 @@ impl RoutingTable {
     }
 
     pub fn peer_id(&self, addr: SocketAddr) -> Option<Id> {
-        self.id_list.get(&addr).map(|id| *id)
+        self.id_list.get(&addr).copied()
     }
 
     /// Returns true if the record exists already or was inserted, false if an attempt was made to
