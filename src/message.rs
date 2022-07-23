@@ -6,8 +6,9 @@ use std::net::SocketAddr;
 use bincode::{Decode, Encode};
 use bytes::Bytes;
 
+use crate::router::Id;
+
 pub type Nonce = u128;
-type Id = u128;
 type Height = u32;
 
 pub enum Response {

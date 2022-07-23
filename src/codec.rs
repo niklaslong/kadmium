@@ -63,7 +63,10 @@ mod tests {
     use rand::{thread_rng, Rng};
 
     use super::*;
-    use crate::message::{Chunk, FindKNodes, KNodes, Ping, Pong};
+    use crate::{
+        message::{Chunk, FindKNodes, KNodes, Ping, Pong},
+        router::Id,
+    };
 
     #[test]
     fn codec_ping() {
@@ -71,7 +74,7 @@ mod tests {
 
         let message = Message::Ping(Ping {
             nonce: rng.gen(),
-            id: rng.gen(),
+            id: Id::new(rng.gen()),
         });
 
         let mut codec = MessageCodec::new();
@@ -87,7 +90,7 @@ mod tests {
 
         let message = Message::Pong(Pong {
             nonce: rng.gen(),
-            id: rng.gen(),
+            id: Id::new(rng.gen()),
         });
 
         let mut codec = MessageCodec::new();
@@ -103,7 +106,7 @@ mod tests {
 
         let message = Message::FindKNodes(FindKNodes {
             nonce: rng.gen(),
-            id: rng.gen(),
+            id: Id::new(rng.gen()),
         });
 
         let mut codec = MessageCodec::new();
@@ -119,7 +122,7 @@ mod tests {
 
         let message = Message::KNodes(KNodes {
             nonce: rng.gen(),
-            nodes: vec![(0, "127.0.0.1:0".parse().unwrap())],
+            nodes: vec![(Id::new(0), "127.0.0.1:0".parse().unwrap())],
         });
 
         let mut codec = MessageCodec::new();

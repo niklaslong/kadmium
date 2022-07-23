@@ -101,7 +101,7 @@ impl Reading for KadNode {
 #[async_trait::async_trait]
 impl Handshake for KadNode {
     async fn perform_handshake(&self, mut conn: Connection) -> io::Result<Connection> {
-        let local_id = self.routing_table.read().local_id();
+        let local_id = self.routing_table.read().local_id().raw_val();
         let peer_side = conn.side();
         let mut peer_addr = conn.addr();
         let stream = self.borrow_stream(&mut conn);
@@ -110,7 +110,7 @@ impl Handshake for KadNode {
             // The peer initiated the connection.
             ConnectionSide::Initiator => {
                 // Receive the peer's local ID.
-                let peer_id = stream.read_u128_le().await?;
+                let peer_id = Id::new(stream.read_u128_le().await?);
                 let peer_port = stream.read_u16_le().await?;
 
                 // Ports will be different since connection was opened by the peer (a new stream is
@@ -152,7 +152,7 @@ impl Handshake for KadNode {
                     .await?;
 
                 // Receive the peer's local ID and port.
-                let peer_id = stream.read_u128_le().await?;
+                let peer_id = Id::new(stream.read_u128_le().await?);
                 let peer_port = stream.read_u16_le().await?;
 
                 // Ports should be the same, since we initiated the connection to the peer's

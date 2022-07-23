@@ -1,7 +1,10 @@
 #![cfg(feature = "codec")]
 #![feature(int_log)]
 
-use kadmium::message::{FindKNodes, KNodes, Message, Ping, Pong};
+use kadmium::{
+    message::{FindKNodes, KNodes, Message, Ping, Pong},
+    router::Id,
+};
 use pea2pea::{
     protocols::{Handshake, Reading, Writing},
     Pea2Pea,
@@ -15,8 +18,8 @@ use crate::common::{enable_tracing, KadNode};
 #[tokio::test]
 async fn connect_two_nodes() {
     let mut rng = thread_rng();
-    let id_a = rng.gen();
-    let id_b = rng.gen();
+    let id_a = Id::new(rng.gen());
+    let id_b = Id::new(rng.gen());
     // Unlikely but just in case we hit this case.
     assert_ne!(id_a, id_b);
 
@@ -41,8 +44,8 @@ async fn ping_pong_two_nodes() {
     // enable_tracing();
 
     let mut rng = thread_rng();
-    let id_a = rng.gen();
-    let id_b = rng.gen();
+    let id_a = Id::new(rng.gen());
+    let id_b = Id::new(rng.gen());
     // Unlikely but just in case we hit this case.
     assert_ne!(id_a, id_b);
 
@@ -89,8 +92,8 @@ async fn k_nodes_two_nodes() {
     enable_tracing();
 
     let mut rng = thread_rng();
-    let id_a = rng.gen();
-    let id_b = rng.gen();
+    let id_a = Id::new(rng.gen());
+    let id_b = Id::new(rng.gen());
     // Unlikely but just in case we hit this case.
     assert_ne!(id_a, id_b);
 
