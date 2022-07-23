@@ -213,6 +213,24 @@ impl RoutingTable {
         }
     }
 
+    /// Removes an ID from the buckets, sets the peer to disconnected.
+    pub fn set_disconnected(&mut self, id: Id) {
+        let (_, i) = self.local_id().distance(&id);
+
+        if i.is_none() {
+            return;
+        }
+
+        // SAFETY: we check i is present above.
+        if let Some(bucket) = self.buckets.get_mut(&i.unwrap()) {
+            bucket.remove(&id);
+        }
+
+        if let Some(peer_meta) = self.peer_list.get_mut(&id) {
+            peer_meta.conn_state = ConnState::Disconnected;
+        }
+    }
+
     /// Sets the last seen timestamp of the peer, this is called when each message is received but
     /// must be manually set after the connection is opened in the handshake.
     pub fn set_last_seen(&mut self, id: Id, last_seen: OffsetDateTime) {
