@@ -141,6 +141,7 @@ mod tests {
         data.try_fill(&mut rng).unwrap();
 
         let message = Message::Chunk(Chunk {
+            nonce: rng.gen(),
             height: rng.gen(),
             data: Bytes::copy_from_slice(&data),
         });

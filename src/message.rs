@@ -35,7 +35,7 @@ impl Message {
             Message::Pong(pong) => Some(pong.nonce),
             Message::FindKNodes(find_k_nodes) => Some(find_k_nodes.nonce),
             Message::KNodes(k_nodes) => Some(k_nodes.nonce),
-            Message::Chunk(_chunk) => None,
+            Message::Chunk(chunk) => Some(chunk.nonce),
         }
     }
 }
@@ -73,6 +73,8 @@ pub struct KNodes {
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "codec", derive(Encode, Decode))]
 pub struct Chunk {
+    // TODO: work out if this is a bad idea.
+    pub nonce: Nonce,
     pub height: Height,
 
     #[cfg_attr(feature = "codec", bincode(with_serde))]

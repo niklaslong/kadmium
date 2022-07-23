@@ -42,11 +42,12 @@ impl KadNode {
         Self {
             node: Node::new(Config {
                 listener_ip: Some(IpAddr::V4(Ipv4Addr::LOCALHOST)),
+                max_connections: 1024,
                 ..Default::default()
             })
             .await
             .unwrap(),
-            routing_table: Arc::new(RwLock::new(RoutingTable::new(id, 20))),
+            routing_table: Arc::new(RwLock::new(RoutingTable::new(id, 255))),
             received_messages: Arc::new(RwLock::new(HashMap::new())),
         }
     }
@@ -69,7 +70,7 @@ impl Reading for KadNode {
 
     async fn process_message(&self, source: SocketAddr, message: Self::Message) -> io::Result<()> {
         let span = self.node().span().clone();
-        debug!(parent: span.clone(), "processing {:?}", message);
+        info!(parent: span.clone(), "processing {:?}", message);
 
         if let Some(nonce) = message.nonce() {
             assert!(self
@@ -103,6 +104,7 @@ impl Handshake for KadNode {
     async fn perform_handshake(&self, mut conn: Connection) -> io::Result<Connection> {
         let local_id = self.routing_table.read().local_id().raw_val();
         let peer_side = conn.side();
+        let conn_addr = conn.addr();
         let mut peer_addr = conn.addr();
         let stream = self.borrow_stream(&mut conn);
 
@@ -123,7 +125,7 @@ impl Handshake for KadNode {
                     let mut rt_g = self.routing_table.write();
 
                     if rt_g.can_connect(peer_id).0 {
-                        assert!(rt_g.insert(peer_id, peer_addr));
+                        assert!(rt_g.insert(peer_id, peer_addr, Some(conn_addr)));
                     }
                 }
 
@@ -158,7 +160,6 @@ impl Handshake for KadNode {
                 // Ports should be the same, since we initiated the connection to the peer's
                 // listener.
                 assert_eq!(peer_addr.port(), peer_port);
-                peer_addr.set_port(peer_port);
 
                 // Scope the lock.
                 {
@@ -166,7 +167,7 @@ impl Handshake for KadNode {
 
                     // If we initiate the connection, we must have space to connect.
                     assert!(rt_g.can_connect(peer_id).0);
-                    assert!(rt_g.insert(peer_id, peer_addr));
+                    assert!(rt_g.insert(peer_id, peer_addr, Some(peer_addr)));
                     assert!(rt_g.set_connected(peer_id));
                     rt_g.set_last_seen(peer_id, OffsetDateTime::now_utc());
                 }
