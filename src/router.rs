@@ -78,10 +78,12 @@ pub struct RoutingTable {
     // The node's local ID.
     local_id: Id,
     max_bucket_size: u8,
-    // The buckets for broadcast purposes.
+    // The buckets constructed for broadcast purposes (only contains connected IDs).
     buckets: HashMap<u32, HashSet<Id>>,
-    // Contains the connected and disconnected peer information.
+    // Maps IDs to peer meta data (both connected and disconnected).
     peer_list: HashMap<Id, PeerMeta>,
+    // Maps peer addresses to peer IDs (connected and disconnected).
+    id_list: HashMap<SocketAddr, Id>,
 }
 
 impl Default for RoutingTable {
@@ -91,8 +93,9 @@ impl Default for RoutingTable {
             local_id: Id::new(0u128),
             max_bucket_size: K,
             buckets: HashMap::new(),
-            // pending: HashMap::new(),
+            // Maps IDs to peer meta data.
             peer_list: HashMap::new(),
+            id_list: HashMap::new(),
         }
     }
 }
@@ -110,6 +113,10 @@ impl RoutingTable {
     /// Return's this router's local id.
     pub fn local_id(&self) -> Id {
         self.local_id
+    }
+
+    pub fn peer_id(&self, addr: SocketAddr) -> Option<Id> {
+        self.id_list.get(&addr).map(|id| *id)
     }
 
     /// Returns true if the record exists already or was inserted, false if an attempt was made to
@@ -142,6 +149,8 @@ impl RoutingTable {
         self.peer_list
             .entry(id)
             .or_insert_with(|| PeerMeta::new(addr, None, ConnState::Disconnected));
+
+        self.id_list.entry(addr).or_insert(id);
 
         true
     }
