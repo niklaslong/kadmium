@@ -14,7 +14,7 @@ use kadmium::{
 };
 use parking_lot::RwLock;
 use pea2pea::{
-    protocols::{Handshake, Reading, Writing},
+    protocols::{Disconnect, Handshake, Reading, Writing},
     Config, Connection, ConnectionSide, Node, Pea2Pea,
 };
 use time::OffsetDateTime;
@@ -183,5 +183,16 @@ impl Writing for KadNode {
 
     fn codec(&self, _addr: SocketAddr, _side: ConnectionSide) -> Self::Codec {
         MessageCodec::new()
+    }
+}
+
+#[async_trait::async_trait]
+impl Disconnect for KadNode {
+    async fn handle_disconnect(&self, addr: SocketAddr) {
+        let mut rt_g = self.routing_table.write();
+
+        if let Some(id) = rt_g.peer_id(addr) {
+            rt_g.set_disconnected(id)
+        }
     }
 }
