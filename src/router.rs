@@ -1,3 +1,5 @@
+//! Core routing table implementation.
+
 use std::{
     cmp::Ordering,
     collections::{HashMap, HashSet},
@@ -65,6 +67,7 @@ impl Default for RoutingTable {
 }
 
 impl RoutingTable {
+    /// Creates a new router.
     pub fn new(local_id: Id, max_bucket_size: u8) -> Self {
         Self {
             local_id,
@@ -73,12 +76,13 @@ impl RoutingTable {
         }
     }
 
+    /// Return's this router's local id.
     pub fn local_id(&self) -> Id {
         self.local_id
     }
 
-    // Returns true if the record exists already, false if an attempt was made to insert our local
-    // ID.
+    /// Returns true if the record exists already or was inserted, false if an attempt was made to
+    /// insert our local ID.
     pub fn insert(&mut self, id: Id, addr: SocketAddr) -> bool {
         // Buckets should only contain connected peers. The other structures should track
         // connection state.
@@ -111,8 +115,8 @@ impl RoutingTable {
         true
     }
 
-    // Returns if there is space in the particular bucket for that ID and the appropriate bucket
-    // index if there is.
+    /// Returns if there is space in the particular bucket for that ID and the appropriate bucket
+    /// index if there is.
     pub fn can_connect(&mut self, id: Id) -> (bool, Option<u32>) {
         // Calculate the distance by XORing the ids.
         let distance = id ^ self.local_id;
@@ -146,6 +150,8 @@ impl RoutingTable {
         }
     }
 
+    /// Sets the peer as connected on the router, returning false if there is no room to connect
+    /// the peer.
     pub fn set_connected(&mut self, id: Id) -> bool {
         match self.can_connect(id) {
             (true, Some(i)) => {
@@ -166,12 +172,15 @@ impl RoutingTable {
         }
     }
 
+    /// Sets the last seen timestamp of the peer, this is called when each message is received but
+    /// must be manually set after the connection is opened in the handshake.
     pub fn set_last_seen(&mut self, id: Id, last_seen: OffsetDateTime) {
         if let Some(peer_meta) = self.peer_list.get_mut(&id) {
             peer_meta.last_seen = Some(last_seen)
         }
     }
 
+    /// Returns the K closest nodes to the ID.
     pub fn find_k_closest(&self, id: Id, k: usize) -> Vec<(Id, SocketAddr)> {
         // Find the K closest nodes to the given ID. There is a total order over the keyspace, so a
         // sort won't yield any conflicts.
@@ -189,6 +198,8 @@ impl RoutingTable {
         ids
     }
 
+    /// Selects the broadcast peers for a particular height, returns `None` if the broadcast
+    /// shouldn't continue any further.
     pub fn select_broadcast_peers(&self, height: u32) -> Option<Vec<(u32, SocketAddr)>> {
         let mut rng = thread_rng();
 
@@ -217,6 +228,8 @@ impl RoutingTable {
 
     // MESSAGE PROCESSING
 
+    /// Processes a peer's message. If it is a query, an appropriate response is returned to
+    /// be sent.
     pub fn process_message(&mut self, message: Message) -> Option<Response> {
         match message {
             Message::Ping(ping) => {

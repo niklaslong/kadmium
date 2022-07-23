@@ -1,3 +1,5 @@
+//! Encoding and decoding utilities for messages.
+
 use std::io;
 
 use bytes::{Bytes, BytesMut};
@@ -5,11 +7,14 @@ use tokio_util::codec::{Decoder, Encoder, LengthDelimitedCodec};
 
 use crate::message::Message;
 
+/// Backed by Bincode and Tokio's [`LengthDelimitedCodec`], this codec implements the [`Encoder`] and
+/// [`Decoder`] traits for [`Message`].
 pub struct MessageCodec {
     codec: LengthDelimitedCodec,
 }
 
 impl MessageCodec {
+    /// Returns a new message codec.
     pub fn new() -> Self {
         Self {
             codec: LengthDelimitedCodec::new(),

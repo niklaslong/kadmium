@@ -1,3 +1,5 @@
+//! Protocol message types.
+
 use std::net::SocketAddr;
 
 #[cfg(feature = "codec")]
