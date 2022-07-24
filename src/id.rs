@@ -1,16 +1,44 @@
-const ID_LEN_BYTES: usize = 32;
+#[cfg(feature = "codec")]
+use bincode::{Decode, Encode};
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "codec", derive(Encode, Decode))]
 pub struct Id {
-    bytes: [u8; ID_LEN_BYTES],
+    bytes: [u8; Self::BYTES],
 }
 
 impl Id {
+    /// The size of the id in bytes.
+    pub const BYTES: usize = 32;
+
+    /// The size of the id in bits.
+    pub const BITS: usize = 32 * 8;
+
+    pub fn new(bytes: [u8; Self::BYTES]) -> Self {
+        Id { bytes }
+    }
+
+    pub fn bytes(&self) -> [u8; Self::BYTES] {
+        self.bytes
+    }
+
     #[cfg(test)]
     /// Convenience function for working with small ids during testing.
     pub fn from_u16(raw: u16) -> Self {
-        let mut bytes = [0u8; ID_LEN_BYTES];
+        let mut bytes = [0u8; Self::BYTES];
         bytes[..2].copy_from_slice(&raw.to_le_bytes());
+
+        Self { bytes }
+    }
+
+    #[doc(hidden)]
+    /// Convenience function for generating random ids during testing.
+    pub fn rand() -> Self {
+        use rand::{thread_rng, Fill};
+
+        let mut rng = thread_rng();
+        let mut bytes = [0u8; Self::BYTES];
+        assert!(bytes.try_fill(&mut rng).is_ok());
 
         Self { bytes }
     }

@@ -6,45 +6,15 @@ use std::{
     net::SocketAddr,
 };
 
-#[cfg(feature = "codec")]
-use bincode::{Decode, Encode};
-use rand::{seq::IteratorRandom, thread_rng};
+use rand::{seq::IteratorRandom, thread_rng, Fill};
 use time::OffsetDateTime;
 
-use crate::message::{Chunk, FindKNodes, KNodes, Message, Ping, Pong, Response};
+use crate::{
+    id::Id,
+    message::{Chunk, FindKNodes, KNodes, Message, Ping, Pong, Response},
+};
 
 const K: u8 = 20;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "codec", derive(Encode, Decode))]
-pub struct Id(u128);
-
-impl Id {
-    pub fn new(id: u128) -> Self {
-        Id(id)
-    }
-
-    pub fn raw_val(&self) -> u128 {
-        self.0
-    }
-
-    // Returns the XOR distance between two IDs and the corresponding bucket index (log2(distance)).
-    fn distance(&self, other_id: &Id) -> (u128, Option<u32>) {
-        let distance = self.0 ^ other_id.0;
-
-        // Don't calculate the log if distance is 0, this should only happen if the ID we got from
-        // the peer is the same as ours.
-        if distance == u128::MIN {
-            return (0, None);
-        }
-
-        // Calculate the index of the bucket from the distance.
-        // Nightly feature.
-        let i = distance.log2();
-
-        (distance, Some(i))
-    }
-}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ConnState {
@@ -91,9 +61,12 @@ pub struct RoutingTable {
 
 impl Default for RoutingTable {
     fn default() -> Self {
+        let mut rng = thread_rng();
+        let mut bytes = [0u8; Id::BYTES];
+        debug_assert!(bytes.try_fill(&mut rng).is_ok());
+
         Self {
-            // TODO: generate a random u128.
-            local_id: Id::new(0u128),
+            local_id: Id::new(bytes),
             max_bucket_size: K,
             buckets: HashMap::new(),
             // Maps IDs to peer meta data.
@@ -195,10 +168,9 @@ impl RoutingTable {
         // // Nightly feature.
         // let i = distance.log2();
 
-        let (distance, i) = self.local_id().distance(&id);
+        let i = self.local_id().log2_distance(&id);
 
         if i.is_none() {
-            debug_assert!(distance == 0);
             return (false, None);
         }
 
@@ -247,7 +219,7 @@ impl RoutingTable {
 
     /// Removes an ID from the buckets, sets the peer to disconnected.
     pub fn set_disconnected(&mut self, id: Id) {
-        let (_, i) = self.local_id().distance(&id);
+        let i = self.local_id().log2_distance(&id);
 
         if i.is_none() {
             return;
@@ -273,17 +245,17 @@ impl RoutingTable {
 
     /// Returns the K closest nodes to the ID.
     pub fn find_k_closest(&self, id: Id, k: usize) -> Vec<(Id, SocketAddr)> {
-        // Find the K closest nodes to the given ID. There is a total order over the keyspace, so a
-        // sort won't yield any conflicts.
-        //
-        // Naive way: just iterate over all the IDs and XOR them? Need a map of ID to the addr, to
-        // be sent to the requesting node.
+        // There is a total order over the id-space, though we take the log2 of the XOR distance,
+        // and so peers within a bucket are considered at the same distance. We use an unstable
+        // sort as we don't care if items at the same distance are reordered (and it is usually
+        // faster).
         let mut ids: Vec<_> = self
             .peer_list
             .iter()
             .map(|(&candidate_id, &candidate_meta)| (candidate_id, candidate_meta.listening_addr))
             .collect();
-        ids.sort_by_key(|(candidate_id, _)| candidate_id.distance(&id).0);
+        // TODO: bench and consider sort_by_cached_key.
+        ids.sort_unstable_by_key(|(candidate_id, _)| candidate_id.log2_distance(&id));
         ids.truncate(k);
 
         ids
@@ -437,58 +409,58 @@ mod tests {
 
     #[test]
     fn insert() {
-        let mut rt = RoutingTable::new(Id::new(0), 1);
+        let mut rt = RoutingTable::new(Id::from_u16(0), 1);
 
         // Attempt to insert our local id.
         assert!(!rt.insert(rt.local_id, "127.0.0.1:0".parse().unwrap(), None));
 
         // ... 0001 -> bucket i = 0
-        assert!(rt.insert(Id::new(1), "127.0.0.1:1".parse().unwrap(), None));
+        assert!(rt.insert(Id::from_u16(1), "127.0.0.1:1".parse().unwrap(), None));
         // ... 0010 -> bucket i = 1
-        assert!(rt.insert(Id::new(2), "127.0.0.1:2".parse().unwrap(), None));
+        assert!(rt.insert(Id::from_u16(2), "127.0.0.1:2".parse().unwrap(), None));
         // ... 0011 -> bucket i = 1
         // This should still return true, since no peers have been inserted into the buckets yet
         // and there is still space.
-        assert!(rt.insert(Id::new(3), "127.0.0.1:3".parse().unwrap(), None));
+        assert!(rt.insert(Id::from_u16(3), "127.0.0.1:3".parse().unwrap(), None));
     }
 
     #[test]
     fn set_connected() {
         // Set the max bucket size to a low value so we can easily test when it's full.
-        let mut rt = RoutingTable::new(Id::new(0), 1);
+        let mut rt = RoutingTable::new(Id::from_u16(0), 1);
 
         // ... 0001 -> bucket i = 0
-        let id = Id::new(1);
+        let id = Id::from_u16(1);
         rt.insert(id, "127.0.0.1:1".parse().unwrap(), None);
         assert!(rt.set_connected(id));
 
         // ... 0010 -> bucket i = 1
-        let id = Id::new(2);
+        let id = Id::from_u16(2);
         rt.insert(id, "127.0.0.1:2".parse().unwrap(), None);
         assert!(rt.set_connected(id));
 
         // ... 0011 -> bucket i = 1
-        let id = Id::new(3);
+        let id = Id::from_u16(3);
         rt.insert(id, "127.0.0.1:3".parse().unwrap(), None);
         assert!(!rt.set_connected(id));
     }
 
     #[test]
     fn find_k_closest() {
-        let mut rt = RoutingTable::new(Id::new(0), 5);
+        let mut rt = RoutingTable::new(Id::from_u16(0), 5);
 
         // Generate 5 IDs and addressses.
         let peers: Vec<(Id, SocketAddr)> = (1..=5)
             .into_iter()
             .map(|i| {
                 (
-                    Id::new(i as u128),
+                    Id::from_u16(i as u16),
                     format!("127.0.0.1:{}", i).parse().unwrap(),
                 )
             })
             .collect();
 
-        for peer in peers {
+        for peer in &peers {
             assert!(rt.insert(peer.0, peer.1, None));
             assert!(rt.set_connected(peer.0));
         }
@@ -497,24 +469,21 @@ mod tests {
         let k_closest = rt.find_k_closest(rt.local_id, k);
 
         assert_eq!(k_closest.len(), 3);
-
-        // The closest IDs are in the same order as the indexes, they are however offset by 1.
-        for (i, (id, addr)) in k_closest.into_iter().enumerate() {
-            assert_eq!(id, Id::new((i + 1) as u128));
-            assert_eq!(addr.port(), (i + 1) as u16);
-        }
+        assert!(k_closest.contains(&peers[0]));
+        assert!(k_closest.contains(&peers[1]));
+        assert!(k_closest.contains(&peers[2]));
     }
 
     #[test]
     fn select_broadcast_peers() {
-        let mut rt = RoutingTable::new(Id::new(0), 5);
+        let mut rt = RoutingTable::new(Id::from_u16(0), 5);
 
         // Generate 5 IDs and addressses.
         let peers: Vec<(Id, SocketAddr)> = (1..=5)
             .into_iter()
             .map(|i| {
                 (
-                    Id::new(i as u128),
+                    Id::from_u16(i as u16),
                     format!("127.0.0.1:{}", i).parse().unwrap(),
                 )
             })

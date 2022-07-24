@@ -9,8 +9,9 @@ use std::{
 
 use kadmium::{
     codec::MessageCodec,
+    id::Id,
     message::{Message, Nonce, Response},
-    router::{Id, RoutingTable},
+    router::RoutingTable,
 };
 use parking_lot::RwLock;
 use pea2pea::{
@@ -102,7 +103,7 @@ impl Reading for KadNode {
 #[async_trait::async_trait]
 impl Handshake for KadNode {
     async fn perform_handshake(&self, mut conn: Connection) -> io::Result<Connection> {
-        let local_id = self.routing_table.read().local_id().raw_val();
+        let local_id = self.routing_table.read().local_id();
         let peer_side = conn.side();
         let conn_addr = conn.addr();
         let mut peer_addr = conn.addr();
@@ -112,11 +113,13 @@ impl Handshake for KadNode {
             // The peer initiated the connection.
             ConnectionSide::Initiator => {
                 // Receive the peer's local ID.
-                let peer_id = Id::new(stream.read_u128_le().await?);
-                let peer_port = stream.read_u16_le().await?;
+                let mut bytes = [0u8; 32];
+                stream.read_exact(&mut bytes).await?;
+                let peer_id = Id::new(bytes);
 
                 // Ports will be different since connection was opened by the peer (a new stream is
                 // created per connection).
+                let peer_port = stream.read_u16_le().await?;
                 assert_ne!(peer_addr.port(), peer_port);
                 peer_addr.set_port(peer_port);
 
@@ -130,7 +133,7 @@ impl Handshake for KadNode {
                 }
 
                 // Respond with our local ID and port.
-                stream.write_u128_le(local_id).await?;
+                stream.write_all(&local_id.bytes()).await?;
                 stream
                     .write_u16_le(self.node().listening_addr().unwrap().port())
                     .await?;
@@ -148,17 +151,19 @@ impl Handshake for KadNode {
             // The node initiated the connection.
             ConnectionSide::Responder => {
                 // Send our local ID to the peer.
-                stream.write_u128_le(local_id).await?;
+                stream.write_all(&local_id.bytes()).await?;
                 stream
                     .write_u16_le(self.node().listening_addr().unwrap().port())
                     .await?;
 
-                // Receive the peer's local ID and port.
-                let peer_id = Id::new(stream.read_u128_le().await?);
-                let peer_port = stream.read_u16_le().await?;
+                // Receive the peer's local ID.
+                let mut bytes = [0u8; 32];
+                stream.read_exact(&mut bytes).await?;
+                let peer_id = Id::new(bytes);
 
                 // Ports should be the same, since we initiated the connection to the peer's
                 // listener.
+                let peer_port = stream.read_u16_le().await?;
                 assert_eq!(peer_addr.port(), peer_port);
 
                 // Scope the lock.

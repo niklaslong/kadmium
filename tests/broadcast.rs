@@ -2,8 +2,8 @@
 
 use bytes::Bytes;
 use kadmium::{
+    id::Id,
     message::{Chunk, Message},
-    router::Id,
 };
 use pea2pea::{
     connect_nodes,
@@ -25,7 +25,7 @@ async fn broadcast_full_mesh() {
 
     let mut nodes = Vec::with_capacity(N);
     for _ in 0..N {
-        let id = Id::new(rng.gen());
+        let id = Id::rand();
         let node = KadNode::new(id).await;
         node.enable_handshake().await;
         node.enable_reading().await;
@@ -41,7 +41,7 @@ async fn broadcast_full_mesh() {
     let peers = broadcaster
         .routing_table
         .read()
-        .select_broadcast_peers(u128::BITS)
+        .select_broadcast_peers(Id::BITS as u32)
         .unwrap();
 
     let nonce = rng.gen();
