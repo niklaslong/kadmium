@@ -80,8 +80,15 @@ impl Reading for KadNode {
                 .is_none())
         }
 
-        // Scope the lock.
-        let response = self.routing_table.write().process_message(message);
+        // Scope the locks.
+        let response = {
+            let mut rt_g = self.routing_table.write();
+
+            let peer_id = rt_g.peer_id(source);
+            assert!(peer_id.is_some());
+
+            rt_g.process_message(message, peer_id.unwrap())
+        };
 
         match response {
             Some(Response::Unicast(message)) => {
@@ -143,7 +150,7 @@ impl Handshake for KadNode {
 
                     // Set the peer as connected.
                     assert!(rt_g.set_connected(peer_id));
-                    rt_g.set_last_seen(peer_id, OffsetDateTime::now_utc());
+                    rt_g.set_last_seen(&peer_id, OffsetDateTime::now_utc());
                 }
             }
 
@@ -173,7 +180,7 @@ impl Handshake for KadNode {
                     assert!(rt_g.can_connect(peer_id).0);
                     assert!(rt_g.insert(peer_id, peer_addr, Some(peer_addr)));
                     assert!(rt_g.set_connected(peer_id));
-                    rt_g.set_last_seen(peer_id, OffsetDateTime::now_utc());
+                    rt_g.set_last_seen(&peer_id, OffsetDateTime::now_utc());
                 }
             }
         }

@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Show required features for gated APIs on docs.rs.
+- Set `last_seen` when processing messages.
+
+### Changed
+
+- Pass in the sender's `Id` to `process_message`.
 
 ## [0.2.0]
 

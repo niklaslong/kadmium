@@ -238,8 +238,8 @@ impl RoutingTable {
 
     /// Sets the last seen timestamp of the peer, this is called when each message is received but
     /// must be manually set after the connection is opened in the handshake.
-    pub fn set_last_seen(&mut self, id: Id, last_seen: OffsetDateTime) {
-        if let Some(peer_meta) = self.peer_list.get_mut(&id) {
+    pub fn set_last_seen(&mut self, id: &Id, last_seen: OffsetDateTime) {
+        if let Some(peer_meta) = self.peer_list.get_mut(id) {
             peer_meta.last_seen = Some(last_seen)
         }
     }
@@ -298,7 +298,10 @@ impl RoutingTable {
 
     /// Processes a peer's message. If it is a query, an appropriate response is returned to
     /// be sent.
-    pub fn process_message(&mut self, message: Message) -> Option<Response> {
+    pub fn process_message(&mut self, message: Message, sender_id: Id) -> Option<Response> {
+        // Update the peer's last seen timestamp.
+        self.set_last_seen(&sender_id, OffsetDateTime::now_utc());
+
         match message {
             Message::Ping(ping) => {
                 let pong = self.process_ping(ping);
@@ -332,10 +335,6 @@ impl RoutingTable {
     }
 
     fn process_ping(&mut self, ping: Ping) -> Pong {
-        // The peer should already exist in the peer list and be present in the bucket, update
-        // the last_seen timestamp.
-        self.set_last_seen(ping.id, OffsetDateTime::now_utc());
-
         // Prepare a response, send back the same nonce so the original sender can identify the
         // request the response corresponds to.
         Pong {
@@ -344,16 +343,12 @@ impl RoutingTable {
         }
     }
 
-    fn process_pong(&mut self, pong: Pong) {
-        // Update the last seen timestamp.
-        self.set_last_seen(pong.id, OffsetDateTime::now_utc());
-
+    fn process_pong(&mut self, _pong: Pong) {
         // TODO: how should latency factor into the broadcast logic? Perhaps keep a table with the
         // message nonces for latency calculation?
     }
 
     fn process_find_k_nodes(&self, find_k_nodes: FindKNodes) -> KNodes {
-        // TODO: update last seen?
         let k_closest_nodes = self.find_k_closest(find_k_nodes.id, K as usize);
 
         KNodes {
