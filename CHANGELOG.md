@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0]
+
 ### Added
 
 - Show required features for gated APIs on docs.rs.
@@ -35,4 +37,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Various improvements to crate documentation.
 
 [unreleased]: https://github.com/niklaslong/kadmium/compare/v0.1.0...HEAD
+[0.3.0]: https://github.com/niklaslong/kadmium/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/niklaslong/kadmium/compare/v0.1.0...v0.2.0

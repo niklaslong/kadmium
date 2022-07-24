@@ -1,6 +1,6 @@
 [package]
 name = "kadmium"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 authors = ["niklaslong <niklas@long.ch>"]
 description = "A broadcast protocol implementation based on Kadcast."
