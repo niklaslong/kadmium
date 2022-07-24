@@ -103,9 +103,10 @@ mod tests {
             let id_a = Id::from_u16(a);
             let id_b = Id::from_u16(b);
 
-            let std = (a ^ b).log2();
+            let xor = a ^ b;
+            let xor_log2 = u16::BITS - xor.leading_zeros() - 1;
 
-            assert_eq!(id_a.log2_distance(&id_b), Some(std))
+            assert_eq!(id_a.log2_distance(&id_b), Some(xor_log2))
         }
     }
 }

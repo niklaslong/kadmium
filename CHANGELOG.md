@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Byte array-backed `Id` to replace the `u128`. This also makes the code compilable on `stable` (except tests, which still require `nightly`.
+
 ### Changed
 
 - Make the `buckets` field on `RoutingTable` private.

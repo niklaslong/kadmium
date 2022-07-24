@@ -8,8 +8,6 @@
 //!    the original protocol.
 //! 3. TODO: threat model differences and mitigations.
 
-#![feature(int_log)]
-
 #[cfg(feature = "codec")]
 pub mod codec;
 pub mod id;
