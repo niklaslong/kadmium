@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Byte array-backed `Id` to replace the `u128`. This also makes the code compilable on `stable` (except tests, which still require `nightly`.
+- Byte array-backed `Id` to replace the `u128`. This also makes the code compilable on `stable` Rust.
 
 ### Changed
 
