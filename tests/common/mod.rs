@@ -84,10 +84,10 @@ impl Reading for KadNode {
         let response = {
             let mut rt_g = self.routing_table.write();
 
-            let peer_id = rt_g.peer_id(source);
+            let peer_id = rt_g.peer_id(&source);
             assert!(peer_id.is_some());
 
-            rt_g.process_message(message, peer_id.unwrap())
+            rt_g.process_message(message, &peer_id.unwrap())
         };
 
         match response {
@@ -133,7 +133,7 @@ impl Handshake for KadNode {
                 {
                     let mut rt_g = self.routing_table.write();
 
-                    if rt_g.can_connect(peer_id).0 {
+                    if rt_g.can_connect(&peer_id).0 {
                         assert!(rt_g.insert(peer_id, peer_addr, Some(conn_addr)));
                     }
                 }
@@ -177,7 +177,7 @@ impl Handshake for KadNode {
                     let mut rt_g = self.routing_table.write();
 
                     // If we initiate the connection, we must have space to connect.
-                    assert!(rt_g.can_connect(peer_id).0);
+                    assert!(rt_g.can_connect(&peer_id).0);
                     assert!(rt_g.insert(peer_id, peer_addr, Some(peer_addr)));
                     assert!(rt_g.set_connected(peer_id));
                     rt_g.set_last_seen(&peer_id, OffsetDateTime::now_utc());
@@ -203,8 +203,8 @@ impl Disconnect for KadNode {
     async fn handle_disconnect(&self, addr: SocketAddr) {
         let mut rt_g = self.routing_table.write();
 
-        if let Some(id) = rt_g.peer_id(addr) {
-            rt_g.set_disconnected(id)
+        if let Some(id) = rt_g.peer_id(&addr) {
+            rt_g.set_disconnected(&id)
         }
     }
 }

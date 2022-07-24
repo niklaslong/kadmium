@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Pass in the sender's `Id` to `process_message`.
+- Pass `Id` by reference where possible.
 
 ## [0.2.0]
 

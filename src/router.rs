@@ -93,8 +93,8 @@ impl RoutingTable {
     }
 
     /// Returns the identifier corresponding to the address, if it exists.
-    pub fn peer_id(&self, addr: SocketAddr) -> Option<Id> {
-        self.id_list.get(&addr).copied()
+    pub fn peer_id(&self, addr: &SocketAddr) -> Option<Id> {
+        self.id_list.get(addr).copied()
     }
 
     /// Returns `true` if the record exists already or was inserted, `false` if an attempt was made to
@@ -155,7 +155,7 @@ impl RoutingTable {
 
     /// Returns whether there is space or not in the particular bucket for that identifier and the appropriate bucket
     /// index if there is.
-    pub fn can_connect(&mut self, id: Id) -> (bool, Option<u32>) {
+    pub fn can_connect(&mut self, id: &Id) -> (bool, Option<u32>) {
         // // Calculate the distance by XORing the ids.
         // let distance = id ^ self.local_id;
 
@@ -169,7 +169,7 @@ impl RoutingTable {
         // // Nightly feature.
         // let i = distance.log2();
 
-        let i = self.local_id().log2_distance(&id);
+        let i = self.local_id().log2_distance(id);
 
         if i.is_none() {
             return (false, None);
@@ -199,7 +199,7 @@ impl RoutingTable {
     /// Sets the peer as connected on the router, returning `false` if there is no room to connect
     /// the peer.
     pub fn set_connected(&mut self, id: Id) -> bool {
-        match self.can_connect(id) {
+        match self.can_connect(&id) {
             (true, Some(i)) => {
                 if let Some(bucket) = self.buckets.get_mut(&i) {
                     // TODO: if this is true, the id was already in the bucket, this should probably be handled
@@ -219,8 +219,8 @@ impl RoutingTable {
     }
 
     /// Removes an identifier from the buckets, sets the peer to disconnected.
-    pub fn set_disconnected(&mut self, id: Id) {
-        let i = self.local_id().log2_distance(&id);
+    pub fn set_disconnected(&mut self, id: &Id) {
+        let i = self.local_id().log2_distance(id);
 
         if i.is_none() {
             return;
@@ -228,10 +228,10 @@ impl RoutingTable {
 
         // SAFETY: we check i is present above.
         if let Some(bucket) = self.buckets.get_mut(&i.unwrap()) {
-            bucket.remove(&id);
+            bucket.remove(id);
         }
 
-        if let Some(peer_meta) = self.peer_list.get_mut(&id) {
+        if let Some(peer_meta) = self.peer_list.get_mut(id) {
             peer_meta.conn_state = ConnState::Disconnected;
         }
     }
@@ -245,7 +245,7 @@ impl RoutingTable {
     }
 
     /// Returns the K closest nodes to the identifier.
-    pub fn find_k_closest(&self, id: Id, k: usize) -> Vec<(Id, SocketAddr)> {
+    pub fn find_k_closest(&self, id: &Id, k: usize) -> Vec<(Id, SocketAddr)> {
         // There is a total order over the id-space, though we take the log2 of the XOR distance,
         // and so peers within a bucket are considered at the same distance. We use an unstable
         // sort as we don't care if items at the same distance are reordered (and it is usually
@@ -256,7 +256,7 @@ impl RoutingTable {
             .map(|(&candidate_id, &candidate_meta)| (candidate_id, candidate_meta.listening_addr))
             .collect();
         // TODO: bench and consider sort_by_cached_key.
-        ids.sort_unstable_by_key(|(candidate_id, _)| candidate_id.log2_distance(&id));
+        ids.sort_unstable_by_key(|(candidate_id, _)| candidate_id.log2_distance(id));
         ids.truncate(k);
 
         ids
@@ -298,9 +298,9 @@ impl RoutingTable {
 
     /// Processes a peer's message. If it is a query, an appropriate response is returned to
     /// be sent.
-    pub fn process_message(&mut self, message: Message, sender_id: Id) -> Option<Response> {
+    pub fn process_message(&mut self, message: Message, sender_id: &Id) -> Option<Response> {
         // Update the peer's last seen timestamp.
-        self.set_last_seen(&sender_id, OffsetDateTime::now_utc());
+        self.set_last_seen(sender_id, OffsetDateTime::now_utc());
 
         match message {
             Message::Ping(ping) => {
@@ -349,7 +349,7 @@ impl RoutingTable {
     }
 
     fn process_find_k_nodes(&self, find_k_nodes: FindKNodes) -> KNodes {
-        let k_closest_nodes = self.find_k_closest(find_k_nodes.id, K as usize);
+        let k_closest_nodes = self.find_k_closest(&find_k_nodes.id, K as usize);
 
         KNodes {
             nonce: find_k_nodes.nonce,
@@ -462,7 +462,7 @@ mod tests {
         }
 
         let k = 3;
-        let k_closest = rt.find_k_closest(rt.local_id, k);
+        let k_closest = rt.find_k_closest(&rt.local_id, k);
 
         assert_eq!(k_closest.len(), 3);
         assert!(k_closest.contains(&peers[0]));
