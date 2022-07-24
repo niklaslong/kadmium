@@ -1,6 +1,9 @@
+//! Protocol identifier types.
+
 #[cfg(feature = "codec")]
 use bincode::{Decode, Encode};
 
+/// A 256-bit identifier that implements a non-euclidian XOR-based distance metric.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "codec", derive(Encode, Decode))]
 pub struct Id {
@@ -8,22 +11,24 @@ pub struct Id {
 }
 
 impl Id {
-    /// The size of the id in bytes.
+    /// The size of the identifier in bytes.
     pub const BYTES: usize = 32;
 
-    /// The size of the id in bits.
+    /// The size of the identifier in bits.
     pub const BITS: usize = 32 * 8;
 
+    /// Creates a new identifier from the supplied bytes.
     pub fn new(bytes: [u8; Self::BYTES]) -> Self {
         Id { bytes }
     }
 
+    /// Returns the bytes backing the identifier.
     pub fn bytes(&self) -> [u8; Self::BYTES] {
         self.bytes
     }
 
     #[cfg(test)]
-    /// Convenience function for working with small ids during testing.
+    /// Convenience function for working with small identifiers during testing.
     pub fn from_u16(raw: u16) -> Self {
         let mut bytes = [0u8; Self::BYTES];
         bytes[..2].copy_from_slice(&raw.to_le_bytes());
@@ -32,7 +37,7 @@ impl Id {
     }
 
     #[doc(hidden)]
-    /// Convenience function for generating random ids during testing.
+    /// Convenience function for generating random identifiers during testing.
     pub fn rand() -> Self {
         use rand::{thread_rng, Fill};
 
@@ -43,7 +48,7 @@ impl Id {
         Self { bytes }
     }
 
-    /// Computes the log2 of the XOR-based distance between two ids. This is equal to the correct bucket index for this id.
+    /// Computes the log2 of the XOR-based distance between two identifiers.
     pub fn log2_distance(&self, other: &Id) -> Option<u32> {
         // Search process:
         //

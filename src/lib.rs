@@ -10,6 +10,10 @@
 
 #[cfg(feature = "codec")]
 pub mod codec;
-pub mod id;
 pub mod message;
-pub mod router;
+
+mod id;
+mod router;
+
+pub use id::Id;
+pub use router::RoutingTable;

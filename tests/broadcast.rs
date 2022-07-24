@@ -2,8 +2,8 @@
 
 use bytes::Bytes;
 use kadmium::{
-    id::Id,
     message::{Chunk, Message},
+    Id,
 };
 use pea2pea::{
     connect_nodes,

@@ -9,9 +9,8 @@ use std::{
 
 use kadmium::{
     codec::MessageCodec,
-    id::Id,
     message::{Message, Nonce, Response},
-    router::RoutingTable,
+    Id, RoutingTable,
 };
 use parking_lot::RwLock;
 use pea2pea::{

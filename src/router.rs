@@ -46,16 +46,17 @@ impl PeerMeta {
     }
 }
 
+/// The core routing table implementation.
 #[derive(Debug, Clone)]
 pub struct RoutingTable {
-    // The node's local ID.
+    // The node's local identifier.
     local_id: Id,
     max_bucket_size: u8,
-    // The buckets constructed for broadcast purposes (only contains connected IDs).
+    // The buckets constructed for broadcast purposes (only contains connected identifiers).
     buckets: HashMap<u32, HashSet<Id>>,
-    // Maps IDs to peer meta data (both connected and disconnected).
+    // Maps identifiers to peer meta data (both connected and disconnected).
     peer_list: HashMap<Id, PeerMeta>,
-    // Maps peer addresses to peer IDs (connected and disconnected).
+    // Maps peer addresses to peer identifiers (connected and disconnected).
     id_list: HashMap<SocketAddr, Id>,
 }
 
@@ -69,7 +70,7 @@ impl Default for RoutingTable {
             local_id: Id::new(bytes),
             max_bucket_size: K,
             buckets: HashMap::new(),
-            // Maps IDs to peer meta data.
+            // Maps identifiers to peer meta data.
             peer_list: HashMap::new(),
             id_list: HashMap::new(),
         }
@@ -86,18 +87,18 @@ impl RoutingTable {
         }
     }
 
-    /// Returns this router's local ID.
+    /// Returns this router's local identifier.
     pub fn local_id(&self) -> Id {
         self.local_id
     }
 
-    /// Returns the ID corresponding to the address, if it exists.
+    /// Returns the identifier corresponding to the address, if it exists.
     pub fn peer_id(&self, addr: SocketAddr) -> Option<Id> {
         self.id_list.get(&addr).copied()
     }
 
     /// Returns `true` if the record exists already or was inserted, `false` if an attempt was made to
-    /// insert our local ID.
+    /// insert our local identifier.
     pub fn insert(
         &mut self,
         id: Id,
@@ -152,13 +153,13 @@ impl RoutingTable {
         true
     }
 
-    /// Returns whether there is space or not in the particular bucket for that ID and the appropriate bucket
+    /// Returns whether there is space or not in the particular bucket for that identifier and the appropriate bucket
     /// index if there is.
     pub fn can_connect(&mut self, id: Id) -> (bool, Option<u32>) {
         // // Calculate the distance by XORing the ids.
         // let distance = id ^ self.local_id;
 
-        // // Don't calculate the log if distance is 0, this should only happen if the ID we got from
+        // // Don't calculate the log if distance is 0, this should only happen if the identifier we got from
         // // the peer is the same as ours.
         // if distance == u128::MIN {
         //     return (false, None);
@@ -217,7 +218,7 @@ impl RoutingTable {
         }
     }
 
-    /// Removes an ID from the buckets, sets the peer to disconnected.
+    /// Removes an identifier from the buckets, sets the peer to disconnected.
     pub fn set_disconnected(&mut self, id: Id) {
         let i = self.local_id().log2_distance(&id);
 
@@ -243,7 +244,7 @@ impl RoutingTable {
         }
     }
 
-    /// Returns the K closest nodes to the ID.
+    /// Returns the K closest nodes to the identifier.
     pub fn find_k_closest(&self, id: Id, k: usize) -> Vec<(Id, SocketAddr)> {
         // There is a total order over the id-space, though we take the log2 of the XOR distance,
         // and so peers within a bucket are considered at the same distance. We use an unstable
@@ -449,7 +450,7 @@ mod tests {
     fn find_k_closest() {
         let mut rt = RoutingTable::new(Id::from_u16(0), 5);
 
-        // Generate 5 IDs and addressses.
+        // Generate 5 identifiers and addressses.
         let peers: Vec<(Id, SocketAddr)> = (1..=5)
             .into_iter()
             .map(|i| {
@@ -478,7 +479,7 @@ mod tests {
     fn select_broadcast_peers() {
         let mut rt = RoutingTable::new(Id::from_u16(0), 5);
 
-        // Generate 5 IDs and addressses.
+        // Generate 5 identifiers and addressses.
         let peers: Vec<(Id, SocketAddr)> = (1..=5)
             .into_iter()
             .map(|i| {

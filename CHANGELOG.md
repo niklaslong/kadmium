@@ -9,11 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Byte array-backed `Id` to replace the `u128`. This also makes the code compilable on `stable` Rust.
+- Byte array-backed `Id` to replace the `u128`.
+
+### Removed
+
+- Rust `nightly` feature `#![feature(int_log)]` requirement, crate compiles on `stable`.
 
 ### Changed
 
 - Make the `buckets` field on `RoutingTable` private.
 - The `find_k_closest` method now uses the log2 of the XOR-distance to order its search instead of the distance.
+- Module visibility and re-exports to be more ergonomic.
+- Various improvements to crate documentation.
 
 [unreleased]: https://github.com/niklaslong/kadmium/compare/v0.1.0...HEAD

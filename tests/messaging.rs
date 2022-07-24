@@ -1,8 +1,8 @@
 #![cfg(feature = "codec")]
 
 use kadmium::{
-    id::Id,
     message::{FindKNodes, KNodes, Message, Ping, Pong},
+    Id,
 };
 use pea2pea::{
     protocols::{Handshake, Reading, Writing},
