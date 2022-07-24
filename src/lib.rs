@@ -12,5 +12,6 @@
 
 #[cfg(feature = "codec")]
 pub mod codec;
+pub mod id;
 pub mod message;
 pub mod router;
