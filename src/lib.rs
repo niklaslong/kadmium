@@ -9,6 +9,7 @@
 //! 3. TODO: threat model differences and mitigations.
 
 #[cfg(feature = "codec")]
+#[cfg_attr(doc_cfg, doc(cfg(feature = "codec")))]
 pub mod codec;
 pub mod message;
 
