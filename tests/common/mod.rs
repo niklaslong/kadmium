@@ -10,7 +10,7 @@ use std::{
 use kadmium::{
     codec::MessageCodec,
     message::{Message, Nonce, Response},
-    Id, RoutingTable,
+    Id, RoutingTable, VerifyData,
 };
 use parking_lot::RwLock;
 use pea2pea::{
@@ -28,6 +28,22 @@ pub fn enable_tracing() {
         .with_test_writer()
         .with_env_filter(EnvFilter::from_default_env())
         .init();
+}
+
+use bytes::Bytes;
+
+struct Data(String);
+
+impl VerifyData for Data {
+    fn verify_data(&self) -> bool {
+        matches!(self, Data(data) if data == "Hello, world!")
+    }
+}
+
+impl From<Bytes> for Data {
+    fn from(bytes: Bytes) -> Self {
+        Data(String::from_utf8(bytes.to_vec()).unwrap())
+    }
 }
 
 #[derive(Clone)]
@@ -87,7 +103,7 @@ impl Reading for KadNode {
             let peer_id = rt_g.peer_id(&source);
             assert!(peer_id.is_some());
 
-            rt_g.process_message(message, &peer_id.unwrap())
+            rt_g.process_message::<Data>(message, &peer_id.unwrap())
         };
 
         match response {

@@ -12,6 +12,7 @@ use time::OffsetDateTime;
 use crate::{
     id::Id,
     message::{Chunk, FindKNodes, KNodes, Message, Ping, Pong, Response},
+    traits::VerifyData,
 };
 
 const K: u8 = 20;
@@ -273,7 +274,11 @@ impl RoutingTable {
 
     /// Processes a peer's message. If it is a query, an appropriate response is returned to
     /// be sent.
-    pub fn process_message(&mut self, message: Message, sender_id: &Id) -> Option<Response> {
+    pub fn process_message<T: VerifyData>(
+        &mut self,
+        message: Message,
+        sender_id: &Id,
+    ) -> Option<Response> {
         // Update the peer's last seen timestamp.
         self.set_last_seen(sender_id, OffsetDateTime::now_utc());
 
@@ -295,7 +300,7 @@ impl RoutingTable {
                 None
             }
             Message::Chunk(chunk) => {
-                if let Some(broadcast) = self.process_chunk(chunk) {
+                if let Some(broadcast) = self.process_chunk::<T>(chunk) {
                     let broadcast = broadcast
                         .into_iter()
                         .map(|(addr, message)| (addr, Message::Chunk(message)))
@@ -342,10 +347,11 @@ impl RoutingTable {
         // continual or only when bootstrapping the network?
     }
 
-    fn process_chunk(&self, chunk: Chunk) -> Option<Vec<(SocketAddr, Chunk)>> {
-        // TODO: verify data, perhaps accept a function as a parameter, should return true or false
-        // for data verification.
-        let is_kosher = true;
+    fn process_chunk<T: VerifyData>(&self, chunk: Chunk) -> Option<Vec<(SocketAddr, Chunk)>> {
+        // Cheap as the backing storage is shared amongst instances.
+        let data = chunk.data.clone();
+        let data_as_t: T = chunk.data.into();
+        let is_kosher = data_as_t.verify_data();
 
         // This is where the buckets come in handy. When a node processes a chunk message, it
         // selects peers in buckets ]h, 0] and propagates the CHUNK message. If h = 0, no
@@ -364,8 +370,7 @@ impl RoutingTable {
                             // TODO: work out if this is a bad idea.
                             nonce: chunk.nonce,
                             height: *height,
-                            // Cheap as the backing storage is shared amongst instances.
-                            data: chunk.data.clone(),
+                            data: data.clone(),
                         },
                     )
                 })

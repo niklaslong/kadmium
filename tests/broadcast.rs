@@ -52,7 +52,7 @@ async fn broadcast_full_mesh() {
             // be the same within a propagation sub-tree.
             nonce,
             height,
-            data: Bytes::from("Hello world"),
+            data: Bytes::from("Hello, world!"),
         });
 
         assert!(broadcaster.unicast(addr, message).is_ok());

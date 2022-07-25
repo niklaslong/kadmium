@@ -17,6 +17,8 @@ pub mod message;
 
 mod id;
 mod router;
+mod traits;
 
 pub use id::Id;
 pub use router::RoutingTable;
+pub use traits::VerifyData;
