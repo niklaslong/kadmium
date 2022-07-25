@@ -55,7 +55,7 @@ async fn broadcast_full_mesh() {
             data: Bytes::from("Hello, world!"),
         });
 
-        assert!(broadcaster.unicast(addr, message).is_ok());
+        assert!(broadcaster.unicast(addr, message).unwrap().await.is_ok());
     }
 
     // This needs to be longer when the test is run with more nodes.

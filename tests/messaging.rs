@@ -78,6 +78,8 @@ async fn ping_pong_two_nodes() {
 
     assert!(node_a
         .unicast(node_b.node().listening_addr().unwrap(), ping.clone())
+        .unwrap()
+        .await
         .is_ok());
 
     // Wait for PING to be received and PONG to come back.
@@ -132,6 +134,8 @@ async fn k_nodes_two_nodes() {
             node_b.node().listening_addr().unwrap(),
             find_k_nodes.clone()
         )
+        .unwrap()
+        .await
         .is_ok());
 
     tokio::time::sleep(std::time::Duration::from_millis(10)).await;
