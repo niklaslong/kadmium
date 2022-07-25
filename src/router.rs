@@ -52,6 +52,7 @@ impl PeerMeta {
 pub struct RoutingTable {
     // The node's local identifier.
     local_id: Id,
+    // The maximum number of identifiers that can be contained in a bucket.
     max_bucket_size: u8,
     // The buckets constructed for broadcast purposes (only contains connected identifiers).
     buckets: HashMap<u32, HashSet<Id>>,
@@ -79,7 +80,7 @@ impl Default for RoutingTable {
 }
 
 impl RoutingTable {
-    /// Creates a new router.
+    /// Creates a new routing table.
     pub fn new(local_id: Id, max_bucket_size: u8) -> Self {
         Self {
             local_id,
@@ -142,8 +143,8 @@ impl RoutingTable {
         true
     }
 
-    /// Returns whether there is space or not in the particular bucket for that identifier and the appropriate bucket
-    /// index if there is.
+    /// Returns whether or not there is space in the bucket corresponding to the identifier and the
+    /// appropriate bucket index if there is.
     pub fn can_connect(&mut self, id: &Id) -> (bool, Option<u32>) {
         let i = self.local_id().log2_distance(id);
 
@@ -172,8 +173,8 @@ impl RoutingTable {
         }
     }
 
-    /// Sets the peer as connected on the router, returning `false` if there is no room to connect
-    /// the peer.
+    /// Sets the peer as connected on the routing table, returning `false` if there is no room to
+    /// connect the peer.
     pub fn set_connected(&mut self, id: Id) -> bool {
         match self.can_connect(&id) {
             (true, Some(i)) => {
@@ -220,24 +221,6 @@ impl RoutingTable {
         }
     }
 
-    /// Returns the K closest nodes to the identifier.
-    pub fn find_k_closest(&self, id: &Id, k: usize) -> Vec<(Id, SocketAddr)> {
-        // There is a total order over the id-space, though we take the log2 of the XOR distance,
-        // and so peers within a bucket are considered at the same distance. We use an unstable
-        // sort as we don't care if items at the same distance are reordered (and it is usually
-        // faster).
-        let mut ids: Vec<_> = self
-            .peer_list
-            .iter()
-            .map(|(&candidate_id, &candidate_meta)| (candidate_id, candidate_meta.listening_addr))
-            .collect();
-        // TODO: bench and consider sort_by_cached_key.
-        ids.sort_unstable_by_key(|(candidate_id, _)| candidate_id.log2_distance(id));
-        ids.truncate(k);
-
-        ids
-    }
-
     /// Selects the broadcast peers for a particular height, returns `None` if the broadcast
     /// shouldn't continue any further.
     pub fn select_broadcast_peers(&self, height: u32) -> Option<Vec<(u32, SocketAddr)>> {
@@ -268,6 +251,24 @@ impl RoutingTable {
         }
 
         Some(selected_peers)
+    }
+
+    /// Returns the K closest nodes to the identifier.
+    fn find_k_closest(&self, id: &Id, k: usize) -> Vec<(Id, SocketAddr)> {
+        // There is a total order over the id-space, though we take the log2 of the XOR distance,
+        // and so peers within a bucket are considered at the same distance. We use an unstable
+        // sort as we don't care if items at the same distance are reordered (and it is usually
+        // faster).
+        let mut ids: Vec<_> = self
+            .peer_list
+            .iter()
+            .map(|(&candidate_id, &candidate_meta)| (candidate_id, candidate_meta.listening_addr))
+            .collect();
+        // TODO: bench and consider sort_by_cached_key.
+        ids.sort_unstable_by_key(|(candidate_id, _)| candidate_id.log2_distance(id));
+        ids.truncate(k);
+
+        ids
     }
 
     // MESSAGE PROCESSING

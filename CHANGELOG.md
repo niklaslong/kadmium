@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Make `process_message` and `process_chunk` generic over `ProcessData<S>`.
+- Make `find_k_closest` private.
 
 ## [0.3.0]
 
