@@ -9,7 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Introduce the `VerifyData` trait to determine if data wrapped in a `Chunk` message should be propagated or not.
+- Introduce the `ProcessData<S>` trait to determine how to handle data wrapped in a `Chunk` message.
+
+### Changed
+
+- Make `process_message` and `process_chunk` generic over `ProcessData<S>`.
 
 ## [0.3.0]
 
