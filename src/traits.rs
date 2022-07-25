@@ -7,7 +7,7 @@ use bytes::Bytes;
 ///
 /// Kadmium also uses [`Bytes`] to handle the data in its encoded state, this is so that it can be
 /// shipped around easily with the [`MessageCodec`](crate::codec::MessageCodec).
-pub trait VerifyData: From<Bytes> {
+pub trait VerifyData<S>: From<Bytes> {
     /// Returns whether the data is valid or not.
-    fn verify_data(&self) -> bool;
+    fn verify_data(&self, state: S) -> bool;
 }

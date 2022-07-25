@@ -34,8 +34,8 @@ use bytes::Bytes;
 
 struct Data(String);
 
-impl VerifyData for Data {
-    fn verify_data(&self) -> bool {
+impl VerifyData<KadNode> for Data {
+    fn verify_data(&self, _state: KadNode) -> bool {
         matches!(self, Data(data) if data == "Hello, world!")
     }
 }
@@ -103,7 +103,7 @@ impl Reading for KadNode {
             let peer_id = rt_g.peer_id(&source);
             assert!(peer_id.is_some());
 
-            rt_g.process_message::<Data>(message, &peer_id.unwrap())
+            rt_g.process_message::<KadNode, Data>(self.clone(), message, &peer_id.unwrap())
         };
 
         match response {

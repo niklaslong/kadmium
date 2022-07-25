@@ -274,8 +274,9 @@ impl RoutingTable {
 
     /// Processes a peer's message. If it is a query, an appropriate response is returned to
     /// be sent.
-    pub fn process_message<T: VerifyData>(
+    pub fn process_message<S, T: VerifyData<S>>(
         &mut self,
+        state: S,
         message: Message,
         sender_id: &Id,
     ) -> Option<Response> {
@@ -300,7 +301,7 @@ impl RoutingTable {
                 None
             }
             Message::Chunk(chunk) => {
-                if let Some(broadcast) = self.process_chunk::<T>(chunk) {
+                if let Some(broadcast) = self.process_chunk::<S, T>(state, chunk) {
                     let broadcast = broadcast
                         .into_iter()
                         .map(|(addr, message)| (addr, Message::Chunk(message)))
@@ -347,11 +348,15 @@ impl RoutingTable {
         // continual or only when bootstrapping the network?
     }
 
-    fn process_chunk<T: VerifyData>(&self, chunk: Chunk) -> Option<Vec<(SocketAddr, Chunk)>> {
+    fn process_chunk<S, T: VerifyData<S>>(
+        &self,
+        state: S,
+        chunk: Chunk,
+    ) -> Option<Vec<(SocketAddr, Chunk)>> {
         // Cheap as the backing storage is shared amongst instances.
         let data = chunk.data.clone();
         let data_as_t: T = chunk.data.into();
-        let is_kosher = data_as_t.verify_data();
+        let is_kosher = data_as_t.verify_data(state);
 
         // This is where the buckets come in handy. When a node processes a chunk message, it
         // selects peers in buckets ]h, 0] and propagates the CHUNK message. If h = 0, no
