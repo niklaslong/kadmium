@@ -128,25 +128,13 @@ impl RoutingTable {
             return false;
         }
 
-        // Insert the peer into the set, if it doesn't exist.
-        // self.peer_list.entry(id).or_insert_with(|| {
-        //     PeerMeta::new(
-        //         listening_addr,
-        //         connection_addr,
-        //         None,
-        //         ConnState::Disconnected,
-        //     )
-        // });
-
         self.peer_list.insert(
             id,
             PeerMeta::new(listening_addr, conn_addr, ConnState::Disconnected, None),
         );
 
-        // self.id_list.entry(listening_addr).or_insert(id);
         self.id_list.insert(listening_addr, id);
         if let Some(addr) = conn_addr {
-            // self.id_list.entry(conn_addr).or_insert(id)
             self.id_list.insert(addr, id);
         }
 
@@ -156,19 +144,6 @@ impl RoutingTable {
     /// Returns whether there is space or not in the particular bucket for that identifier and the appropriate bucket
     /// index if there is.
     pub fn can_connect(&mut self, id: &Id) -> (bool, Option<u32>) {
-        // // Calculate the distance by XORing the ids.
-        // let distance = id ^ self.local_id;
-
-        // // Don't calculate the log if distance is 0, this should only happen if the identifier we got from
-        // // the peer is the same as ours.
-        // if distance == u128::MIN {
-        //     return (false, None);
-        // }
-
-        // // Calculate the index of the bucket from the distance.
-        // // Nightly feature.
-        // let i = distance.log2();
-
         let i = self.local_id().log2_distance(id);
 
         if i.is_none() {
