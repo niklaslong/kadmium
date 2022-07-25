@@ -12,7 +12,7 @@ use time::OffsetDateTime;
 use crate::{
     id::Id,
     message::{Chunk, FindKNodes, KNodes, Message, Ping, Pong, Response},
-    traits::VerifyData,
+    traits::ProcessData,
 };
 
 const K: u8 = 20;
@@ -274,7 +274,7 @@ impl RoutingTable {
 
     /// Processes a peer's message. If it is a query, an appropriate response is returned to
     /// be sent.
-    pub fn process_message<S, T: VerifyData<S>>(
+    pub fn process_message<S, T: ProcessData<S>>(
         &mut self,
         state: S,
         message: Message,
@@ -348,7 +348,7 @@ impl RoutingTable {
         // continual or only when bootstrapping the network?
     }
 
-    fn process_chunk<S, T: VerifyData<S>>(
+    fn process_chunk<S, T: ProcessData<S>>(
         &self,
         state: S,
         chunk: Chunk,

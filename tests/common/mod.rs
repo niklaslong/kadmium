@@ -10,7 +10,7 @@ use std::{
 use kadmium::{
     codec::MessageCodec,
     message::{Message, Nonce, Response},
-    Id, RoutingTable, VerifyData,
+    Id, ProcessData, RoutingTable,
 };
 use parking_lot::RwLock;
 use pea2pea::{
@@ -34,7 +34,7 @@ use bytes::Bytes;
 
 struct Data(String);
 
-impl VerifyData<KadNode> for Data {
+impl ProcessData<KadNode> for Data {
     fn verify_data(&self, _state: KadNode) -> bool {
         matches!(self, Data(data) if data == "Hello, world!")
     }

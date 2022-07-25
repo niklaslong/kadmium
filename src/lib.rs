@@ -21,4 +21,4 @@ mod traits;
 
 pub use id::Id;
 pub use router::RoutingTable;
-pub use traits::VerifyData;
+pub use traits::ProcessData;
