@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - APIs now use the connection address for lookups instead of the identifier.
 
+### Removed
+
+- The `set_last_seen` helper is no longer needed as part of the public or private APIs.
+
 ## [0.4.0]
 
 ### Added

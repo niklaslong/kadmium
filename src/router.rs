@@ -224,14 +224,6 @@ impl RoutingTable {
         }
     }
 
-    /// Sets the last seen timestamp of the peer, this is called when each message is received but
-    /// must be manually set after the connection is opened in the handshake.
-    pub fn set_last_seen(&mut self, id: &Id, last_seen: OffsetDateTime) {
-        if let Some(peer_meta) = self.peer_list.get_mut(id) {
-            peer_meta.last_seen = Some(last_seen)
-        }
-    }
-
     /// Selects the broadcast peers for a particular height, returns `None` if the broadcast
     /// shouldn't continue any further.
     pub fn select_broadcast_peers(&self, height: u32) -> Option<Vec<(u32, SocketAddr)>> {
@@ -298,7 +290,9 @@ impl RoutingTable {
         };
 
         // Update the peer's last seen timestamp.
-        self.set_last_seen(&id, OffsetDateTime::now_utc());
+        if let Some(peer_meta) = self.peer_list.get_mut(&id) {
+            peer_meta.last_seen = Some(OffsetDateTime::now_utc())
+        }
 
         match message {
             Message::Ping(ping) => {
