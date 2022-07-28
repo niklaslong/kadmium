@@ -17,7 +17,6 @@ use pea2pea::{
     protocols::{Disconnect, Handshake, Reading, Writing},
     Config, Connection, ConnectionSide, Node, Pea2Pea,
 };
-use time::OffsetDateTime;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tracing::*;
 use tracing_subscriber::{fmt, EnvFilter};
@@ -99,11 +98,7 @@ impl Reading for KadNode {
         // Scope the locks.
         let response = {
             let mut rt_g = self.routing_table.write();
-
-            let peer_id = rt_g.peer_id(&source);
-            assert!(peer_id.is_some());
-
-            rt_g.process_message::<KadNode, Data>(self.clone(), message, &peer_id.unwrap())
+            rt_g.process_message::<KadNode, Data>(self.clone(), message, source)
         };
 
         match response {
@@ -148,10 +143,7 @@ impl Handshake for KadNode {
                 // Scope the lock.
                 {
                     let mut rt_g = self.routing_table.write();
-
-                    if rt_g.can_connect(&peer_id).0 {
-                        assert!(rt_g.insert(peer_id, peer_addr, Some(conn_addr)));
-                    }
+                    assert!(rt_g.insert(peer_id, peer_addr, Some(conn_addr)));
                 }
 
                 // Respond with our local ID and port.
@@ -165,8 +157,7 @@ impl Handshake for KadNode {
                     let mut rt_g = self.routing_table.write();
 
                     // Set the peer as connected.
-                    assert!(rt_g.set_connected(peer_id));
-                    rt_g.set_last_seen(&peer_id, OffsetDateTime::now_utc());
+                    assert!(rt_g.set_connected(conn_addr));
                 }
             }
 
@@ -192,11 +183,12 @@ impl Handshake for KadNode {
                 {
                     let mut rt_g = self.routing_table.write();
 
-                    // If we initiate the connection, we must have space to connect.
-                    assert!(rt_g.can_connect(&peer_id).0);
+                    // If we initiate the connection, we must have space to connect, `can_connect`
+                    // should have been checked before opening the connection and it will be
+                    // checked again in `set_connected`.
                     assert!(rt_g.insert(peer_id, peer_addr, Some(peer_addr)));
-                    assert!(rt_g.set_connected(peer_id));
-                    rt_g.set_last_seen(&peer_id, OffsetDateTime::now_utc());
+                    assert!(rt_g.can_connect(peer_addr).0);
+                    assert!(rt_g.set_connected(peer_addr));
                 }
             }
         }
@@ -217,10 +209,6 @@ impl Writing for KadNode {
 #[async_trait::async_trait]
 impl Disconnect for KadNode {
     async fn handle_disconnect(&self, addr: SocketAddr) {
-        let mut rt_g = self.routing_table.write();
-
-        if let Some(id) = rt_g.peer_id(&addr) {
-            rt_g.set_disconnected(&id)
-        }
+        self.routing_table.write().set_disconnected(addr);
     }
 }
