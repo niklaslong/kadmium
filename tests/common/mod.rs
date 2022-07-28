@@ -140,11 +140,11 @@ impl Handshake for KadNode {
                 assert_ne!(peer_addr.port(), peer_port);
                 peer_addr.set_port(peer_port);
 
-                // Scope the lock.
-                {
-                    let mut rt_g = self.routing_table.write();
-                    assert!(rt_g.insert(peer_id, peer_addr, Some(conn_addr)));
-                }
+                // Insert the peer.
+                assert!(self
+                    .routing_table
+                    .write()
+                    .insert(peer_id, peer_addr, Some(conn_addr)));
 
                 // Respond with our local ID and port.
                 stream.write_all(&local_id.bytes()).await?;
@@ -152,13 +152,8 @@ impl Handshake for KadNode {
                     .write_u16_le(self.node().listening_addr().unwrap().port())
                     .await?;
 
-                // Scope the lock.
-                {
-                    let mut rt_g = self.routing_table.write();
-
-                    // Set the peer as connected.
-                    assert!(rt_g.set_connected(conn_addr));
-                }
+                // Set the peer as connected.
+                assert!(self.routing_table.write().set_connected(conn_addr));
             }
 
             // The node initiated the connection.
@@ -187,7 +182,6 @@ impl Handshake for KadNode {
                     // should have been checked before opening the connection and it will be
                     // checked again in `set_connected`.
                     assert!(rt_g.insert(peer_id, peer_addr, Some(peer_addr)));
-                    assert!(rt_g.can_connect(peer_addr).0);
                     assert!(rt_g.set_connected(peer_addr));
                 }
             }
