@@ -56,9 +56,9 @@ pub struct RoutingTable {
     max_bucket_size: u8,
     // The buckets constructed for broadcast purposes (only contains connected identifiers).
     buckets: HashMap<u32, HashSet<Id>>,
-    // Maps identifiers to peer meta data (both connected and disconnected).
+    // Maps identifiers to peer meta data (connected and disconnected).
     peer_list: HashMap<Id, PeerMeta>,
-    // Maps peer addresses to peer identifiers (connected and disconnected).
+    // Maps peer addresses to peer identifiers (connected only).
     id_list: HashMap<SocketAddr, Id>,
 }
 
@@ -72,7 +72,6 @@ impl Default for RoutingTable {
             local_id: Id::new(bytes),
             max_bucket_size: K,
             buckets: HashMap::new(),
-            // Maps identifiers to peer meta data.
             peer_list: HashMap::new(),
             id_list: HashMap::new(),
         }
@@ -117,23 +116,27 @@ impl RoutingTable {
         // 2. the peer was included in a list from another peer (should be inserted as
         //    disconnected unless it is already in the list and is connected).
         //
-        // Solution: insert all addresses as disconnected initially. The caller can then check if
-        // the bucket has space and if so initiates a connection in case 1, or accepts the
-        // connection in case 2.
+        // Insert all peers as disconnected initially. The caller can then check if the
+        // bucket has space and if so initiates a connection in case 1, or accepts the connection
+        // in case 2.
         //
-        // Eviction logic (a little different to the standard kadcast protocol):
-        //
-        // 1. nodes are evicted when they disconnect
-        // 2. nodes are evicted periodically based on network latency
+        // If a peer exists already, we update the address information without reseting the
+        // connecton state. The node wrapping this implementation should make sure to call
+        // `set_disconnected` if a connection is closed or dropped.
 
         if id == self.local_id {
             return false;
         }
 
-        self.peer_list.insert(
-            id,
-            PeerMeta::new(listening_addr, conn_addr, ConnState::Disconnected, None),
-        );
+        self.peer_list
+            .entry(id)
+            .and_modify(|meta| {
+                meta.listening_addr = listening_addr;
+                meta.conn_addr = conn_addr;
+            })
+            .or_insert_with(|| {
+                PeerMeta::new(listening_addr, conn_addr, ConnState::Disconnected, None)
+            });
 
         self.id_list.insert(listening_addr, id);
         if let Some(addr) = conn_addr {
@@ -210,6 +213,10 @@ impl RoutingTable {
 
         if let Some(peer_meta) = self.peer_list.get_mut(id) {
             peer_meta.conn_state = ConnState::Disconnected;
+            // Remove the entry from the identifier list as the addr is likely to change when a
+            // peer reconnects later (also this means we only have one collection tracking
+            // disconnected peers for simplicity).
+            self.id_list.remove(&peer_meta.listening_addr);
         }
     }
 
