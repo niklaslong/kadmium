@@ -16,10 +16,7 @@ use crate::{
 };
 
 #[cfg(feature = "sync")]
-mod sync;
-#[cfg(feature = "sync")]
-#[cfg_attr(doc_cfg, doc(cfg(feature = "sync")))]
-pub use sync::AsyncRoutingTable;
+pub mod sync;
 
 const K: u8 = 20;
 

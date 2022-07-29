@@ -10,14 +10,15 @@ use crate::{
     traits::ProcessData,
 };
 
-// TODO: feature flag.
+#[cfg_attr(doc_cfg, doc(cfg(feature = "sync")))]
 #[derive(Debug, Default, Clone)]
-pub struct AsyncRoutingTable {
+/// A routing table implementation suitable for use in async contexts.
+pub struct SyncRoutingTable {
     routing_table: Arc<RwLock<RoutingTable>>,
     pub sent_nonces: Arc<RwLock<HashMap<Nonce, OffsetDateTime>>>,
 }
 
-impl AsyncRoutingTable {
+impl SyncRoutingTable {
     pub fn new(local_id: Id, max_bucket_size: u8) -> Self {
         Self {
             routing_table: Arc::new(RwLock::new(RoutingTable::new(local_id, max_bucket_size))),
@@ -25,7 +26,6 @@ impl AsyncRoutingTable {
         }
     }
 
-    /// Returns this router's local identifier.
     pub fn local_id(&self) -> Id {
         self.routing_table.read().local_id()
     }

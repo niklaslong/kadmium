@@ -9,7 +9,7 @@ use rand::{thread_rng, Rng};
 use crate::{
     id::Id,
     message::{Chunk, Message, Nonce},
-    router::AsyncRoutingTable,
+    router::sync::SyncRoutingTable,
 };
 
 /// A trait used to determine how message-wrapped data is handled.
@@ -34,27 +34,29 @@ pub trait ProcessData<S>: From<Bytes> {
     fn process_data(&self, _state: S) {}
 }
 
-// self.ping().await;
-// self.mesh().await;
-// self.kadcast(block.into()).await;
-// self.kadcast(tx.into()).await;
-
+/// A trait used to enable core kadcast functionality on the implementor.
 #[cfg(feature = "sync")]
+#[cfg_attr(doc_cfg, doc(cfg(feature = "sync")))]
 #[async_trait::async_trait]
 pub trait Kadcast {
+    /// The interval between periodic pings in seconds.
     const PING_INTERVAL_SECS: u16 = 30;
-
-    // TODO: maybe make these depend on min peers?
+    /// The interval between periodic requests for peers while below the mininum number of peers.
     const BOOTSTRAP_INTERVAL_SECS: u16 = 10;
-    const MESH_INTERVAL_SECS: u16 = 60;
+    /// The interval between periodic requests for peers while above the minimum number of peers.
+    const DISCOVERY_INTERVAL_SECS: u16 = 60;
 
-    fn routing_table(&self) -> &AsyncRoutingTable;
+    /// Returns a clonable reference to the routing table.
+    fn routing_table(&self) -> &SyncRoutingTable;
 
+    /// Sends a message to the destination address.
     async fn unicast(&self, dst: SocketAddr, message: Message);
 
+    /// Starts the periodic ping task.
     async fn ping(&self) {}
 
-    async fn mesh(&self) {
+    /// Starts the periodic peer discovery task.
+    async fn peer(&self) {
         // tokio::spawn(async move || loop {
         //     let rt_g = self.routing_table.read();
         //     // Continually mesh, if the peer count is less than the min.
@@ -69,6 +71,7 @@ pub trait Kadcast {
         // })
     }
 
+    /// Broadcast data to the network, following the kadcast protocol.
     async fn kadcast(&self, data: Bytes) -> Nonce {
         let peers = self
             .routing_table()

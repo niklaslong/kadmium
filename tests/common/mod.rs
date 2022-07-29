@@ -10,8 +10,7 @@ use std::{
 use kadmium::{
     codec::MessageCodec,
     message::{Message, Nonce, Response},
-    router::AsyncRoutingTable,
-    Id, Kadcast, ProcessData,
+    Id, Kadcast, ProcessData, SyncRoutingTable,
 };
 use parking_lot::RwLock;
 use pea2pea::{
@@ -53,7 +52,7 @@ impl ProcessData<KadNode> for Data {
 #[async_trait::async_trait]
 impl Kadcast for KadNode {
     // Returns a clonable reference to the routing table.
-    fn routing_table(&self) -> &AsyncRoutingTable {
+    fn routing_table(&self) -> &SyncRoutingTable {
         &self.routing_table
     }
 
@@ -71,7 +70,7 @@ impl From<Bytes> for Data {
 #[derive(Clone)]
 pub struct KadNode {
     pub node: Node,
-    pub routing_table: AsyncRoutingTable,
+    pub routing_table: SyncRoutingTable,
     pub received_messages: Arc<RwLock<HashMap<Nonce, Message>>>,
 }
 
@@ -85,7 +84,7 @@ impl KadNode {
             })
             .await
             .unwrap(),
-            routing_table: AsyncRoutingTable::new(id, 20),
+            routing_table: SyncRoutingTable::new(id, 20),
             received_messages: Arc::new(RwLock::new(HashMap::new())),
         }
     }
@@ -95,7 +94,7 @@ impl KadNode {
         self.ping().await;
 
         // OVERLAY CONSTRUCTION
-        self.mesh().await;
+        self.peer().await;
     }
 }
 

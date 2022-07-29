@@ -14,13 +14,15 @@
 #[cfg_attr(doc_cfg, doc(cfg(feature = "codec")))]
 pub mod codec;
 pub mod message;
-pub mod router;
 
 mod id;
+mod router;
 mod traits;
 
 pub use id::Id;
 #[cfg(feature = "sync")]
-#[cfg_attr(doc_cfg, doc(cfg(feature = "sync")))]
+pub use router::sync::SyncRoutingTable;
+pub use router::RoutingTable;
+#[cfg(feature = "sync")]
 pub use traits::Kadcast;
 pub use traits::ProcessData;
