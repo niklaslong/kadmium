@@ -14,11 +14,10 @@
 #[cfg_attr(doc_cfg, doc(cfg(feature = "codec")))]
 pub mod codec;
 pub mod message;
+pub mod router;
 
 mod id;
-mod router;
 mod traits;
 
 pub use id::Id;
-pub use router::RoutingTable;
 pub use traits::{Kadcast, ProcessData};

@@ -1,16 +1,11 @@
 #![cfg(feature = "codec")]
 
-use bytes::Bytes;
-use kadmium::{
-    message::{Chunk, Message},
-    Id, Kadcast,
-};
+use kadmium::{Id, Kadcast};
 use pea2pea::{
     connect_nodes,
     protocols::{Handshake, Reading, Writing},
     Topology,
 };
-use rand::{thread_rng, Rng};
 
 mod common;
 #[allow(unused_imports)]
@@ -21,7 +16,6 @@ async fn broadcast_full_mesh() {
     // enable_tracing();
 
     const N: usize = 10;
-    let mut rng = thread_rng();
 
     let mut nodes = Vec::with_capacity(N);
     for _ in 0..N {
@@ -39,26 +33,6 @@ async fn broadcast_full_mesh() {
 
     let broadcaster = nodes.pop().unwrap();
     let nonce = broadcaster.kadcast("Hello, world!".into()).await;
-
-    //  let peers = broadcaster
-    //      .routing_table
-    //      .read()
-    //      .select_broadcast_peers(Id::BITS as u32)
-    //      .unwrap();
-
-    //  let nonce = rng.gen();
-
-    //  for (height, addr) in peers {
-    //      let message = Message::Chunk(Chunk {
-    //          // Can be used to trace the broadcast. If set differently for each peer here, it will
-    //          // be the same within a propagation sub-tree.
-    //          nonce,
-    //          height,
-    //          data: Bytes::from("Hello, world!"),
-    //      });
-
-    //      assert!(broadcaster.unicast(addr, message).unwrap().await.is_ok());
-    //  }
 
     // This needs to be longer when the test is run with more nodes.
     tokio::time::sleep(std::time::Duration::from_millis(10)).await;

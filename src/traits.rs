@@ -1,14 +1,12 @@
-use std::{collections::HashMap, net::SocketAddr, sync::Arc};
+use std::net::SocketAddr;
 
 use bytes::Bytes;
-use parking_lot::RwLock;
 use rand::{thread_rng, Rng};
-use time::OffsetDateTime;
 
 use crate::{
     id::Id,
     message::{Chunk, Message, Nonce},
-    router::RoutingTable,
+    router::AsyncRoutingTable,
 };
 
 /// A trait used to determine how message-wrapped data is handled.
@@ -38,11 +36,6 @@ pub trait ProcessData<S>: From<Bytes> {
 // self.kadcast(block.into()).await;
 // self.kadcast(tx.into()).await;
 
-// struct AsyncRoutingTable {
-//     routing_table: Arc<RwLock<RoutingTable>>,
-//     sent_nonces: Arc<RwLock<HashMap<Nonce, OffsetDateTime>>>,
-// }
-
 #[async_trait::async_trait]
 pub trait Kadcast {
     const PING_INTERVAL_SECS: u16 = 30;
@@ -51,8 +44,7 @@ pub trait Kadcast {
     const BOOTSTRAP_INTERVAL_SECS: u16 = 10;
     const MESH_INTERVAL_SECS: u16 = 60;
 
-    // TODO: expose this as `AsyncRoutingTable`?
-    fn routing_table(&self) -> Arc<RwLock<RoutingTable>>;
+    fn routing_table(&self) -> &AsyncRoutingTable;
 
     async fn unicast(&self, dst: SocketAddr, message: Message);
 
@@ -76,7 +68,6 @@ pub trait Kadcast {
     async fn kadcast(&self, data: Bytes) -> Nonce {
         let peers = self
             .routing_table()
-            .read()
             .select_broadcast_peers(Id::BITS as u32)
             .unwrap();
 

@@ -68,12 +68,12 @@ async fn ping_pong_two_nodes() {
     let nonce = rng.gen();
     let ping = Message::Ping(Ping {
         nonce,
-        id: node_a.routing_table.read().local_id(),
+        id: node_a.routing_table.local_id(),
     });
 
     let pong = Message::Pong(Pong {
         nonce,
-        id: node_b.routing_table.read().local_id(),
+        id: node_b.routing_table.local_id(),
     });
 
     assert!(node_a
@@ -118,13 +118,13 @@ async fn k_nodes_two_nodes() {
     let nonce = rng.gen();
     let find_k_nodes = Message::FindKNodes(FindKNodes {
         nonce,
-        id: node_a.routing_table.read().local_id(),
+        id: node_a.routing_table.local_id(),
     });
 
     let k_nodes = Message::KNodes(KNodes {
         nonce,
         nodes: vec![(
-            node_a.routing_table.read().local_id(),
+            node_a.routing_table.local_id(),
             node_a.node().listening_addr().unwrap(),
         )],
     });

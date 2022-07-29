@@ -10,7 +10,8 @@ use std::{
 use kadmium::{
     codec::MessageCodec,
     message::{Message, Nonce, Response},
-    Id, Kadcast, ProcessData, RoutingTable,
+    router::AsyncRoutingTable,
+    Id, Kadcast, ProcessData,
 };
 use parking_lot::RwLock;
 use pea2pea::{
@@ -51,8 +52,9 @@ impl ProcessData<KadNode> for Data {
 
 #[async_trait::async_trait]
 impl Kadcast for KadNode {
-    fn routing_table(&self) -> Arc<RwLock<RoutingTable>> {
-        self.routing_table.clone()
+    // Returns a clonable reference to the routing table.
+    fn routing_table(&self) -> &AsyncRoutingTable {
+        &self.routing_table
     }
 
     async fn unicast(&self, addr: SocketAddr, message: Message) {
@@ -69,7 +71,7 @@ impl From<Bytes> for Data {
 #[derive(Clone)]
 pub struct KadNode {
     pub node: Node,
-    pub routing_table: Arc<RwLock<RoutingTable>>,
+    pub routing_table: AsyncRoutingTable,
     pub received_messages: Arc<RwLock<HashMap<Nonce, Message>>>,
 }
 
@@ -83,7 +85,7 @@ impl KadNode {
             })
             .await
             .unwrap(),
-            routing_table: Arc::new(RwLock::new(RoutingTable::new(id, 255))),
+            routing_table: AsyncRoutingTable::new(id, 20),
             received_messages: Arc::new(RwLock::new(HashMap::new())),
         }
     }
@@ -124,11 +126,9 @@ impl Reading for KadNode {
                 .is_none())
         }
 
-        // Scope the locks.
-        let response = {
-            let mut rt_g = self.routing_table.write();
-            rt_g.process_message::<KadNode, Data>(self.clone(), message, source)
-        };
+        let response =
+            self.routing_table
+                .process_message::<KadNode, Data>(self.clone(), message, source);
 
         match response {
             Some(Response::Unicast(message)) => {
@@ -158,7 +158,7 @@ impl Writing for KadNode {
 #[async_trait::async_trait]
 impl Handshake for KadNode {
     async fn perform_handshake(&self, mut conn: Connection) -> io::Result<Connection> {
-        let local_id = self.routing_table.read().local_id();
+        let local_id = self.routing_table.local_id();
         let peer_side = conn.side();
         let conn_addr = conn.addr();
         let mut peer_addr = conn.addr();
@@ -181,7 +181,6 @@ impl Handshake for KadNode {
                 // Insert the peer.
                 assert!(self
                     .routing_table
-                    .write()
                     .insert(peer_id, peer_addr, Some(conn_addr)));
 
                 // Respond with our local ID and port.
@@ -191,7 +190,7 @@ impl Handshake for KadNode {
                     .await?;
 
                 // Set the peer as connected.
-                assert!(self.routing_table.write().set_connected(conn_addr));
+                assert!(self.routing_table.set_connected(conn_addr));
             }
 
             // The node initiated the connection.
@@ -212,16 +211,14 @@ impl Handshake for KadNode {
                 let peer_port = stream.read_u16_le().await?;
                 assert_eq!(peer_addr.port(), peer_port);
 
-                // Scope the lock.
-                {
-                    let mut rt_g = self.routing_table.write();
-
-                    // If we initiate the connection, we must have space to connect, `can_connect`
-                    // should have been checked before opening the connection and it will be
-                    // checked again in `set_connected`.
-                    assert!(rt_g.insert(peer_id, peer_addr, Some(peer_addr)));
-                    assert!(rt_g.set_connected(peer_addr));
-                }
+                // If we initiate the connection, we must have space to connect, `can_connect`
+                // should have been checked before opening the connection and it will be
+                // checked again in `set_connected`. Idem, `insert` shouldn't be needed here,
+                // since we should only be initiating connections with peers we know about.
+                assert!(self
+                    .routing_table
+                    .insert(peer_id, peer_addr, Some(peer_addr)));
+                assert!(self.routing_table.set_connected(peer_addr));
             }
         }
 
@@ -232,6 +229,6 @@ impl Handshake for KadNode {
 #[async_trait::async_trait]
 impl Disconnect for KadNode {
     async fn handle_disconnect(&self, addr: SocketAddr) {
-        self.routing_table.write().set_disconnected(addr);
+        self.routing_table.set_disconnected(addr);
     }
 }
