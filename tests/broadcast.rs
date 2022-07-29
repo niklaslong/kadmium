@@ -1,4 +1,4 @@
-#![cfg(feature = "codec")]
+#![cfg(all(feature = "codec", feature = "sync"))]
 
 use kadmium::{Id, Kadcast};
 use pea2pea::{

@@ -1,8 +1,11 @@
+#[cfg(feature = "sync")]
 use std::net::SocketAddr;
 
 use bytes::Bytes;
+#[cfg(feature = "sync")]
 use rand::{thread_rng, Rng};
 
+#[cfg(feature = "sync")]
 use crate::{
     id::Id,
     message::{Chunk, Message, Nonce},
@@ -36,6 +39,7 @@ pub trait ProcessData<S>: From<Bytes> {
 // self.kadcast(block.into()).await;
 // self.kadcast(tx.into()).await;
 
+#[cfg(feature = "sync")]
 #[async_trait::async_trait]
 pub trait Kadcast {
     const PING_INTERVAL_SECS: u16 = 30;

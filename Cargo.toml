@@ -14,16 +14,21 @@ keywords = ["p2p", "peer-to-peer", "networking"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [features]
 default = []
-full = ["codec"]
+sync = ["async-trait", "parking_lot"]
+full = ["codec", "sync"]
 codec = ["tokio-util/codec", "bincode", "bytes/serde"]
 
 [dependencies]
 rand = "0.8.5"
 time = "0.3.11"
 
-# TODO: feature flag.
-async-trait = "0.1.56"
-parking_lot = "0.12.1"
+[dependencies.async-trait]
+version = "0.1.56"
+optional = true
+
+[dependencies.parking_lot]
+version = "0.12.1"
+optional = true
 
 [dependencies.bincode]
 version = "2.0.0-rc.1"

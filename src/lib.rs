@@ -20,4 +20,7 @@ mod id;
 mod traits;
 
 pub use id::Id;
-pub use traits::{Kadcast, ProcessData};
+#[cfg(feature = "sync")]
+#[cfg_attr(doc_cfg, doc(cfg(feature = "sync")))]
+pub use traits::Kadcast;
+pub use traits::ProcessData;

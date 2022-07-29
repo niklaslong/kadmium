@@ -1,4 +1,4 @@
-#![cfg(feature = "codec")]
+#![cfg(all(feature = "codec", feature = "sync"))]
 
 use std::{
     collections::HashMap,
