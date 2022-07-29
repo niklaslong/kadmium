@@ -3,7 +3,7 @@
 use bytes::Bytes;
 use kadmium::{
     message::{Chunk, Message},
-    Id,
+    Id, Kadcast,
 };
 use pea2pea::{
     connect_nodes,
@@ -38,25 +38,27 @@ async fn broadcast_full_mesh() {
     assert!(connect_nodes(&nodes, Topology::Mesh).await.is_ok());
 
     let broadcaster = nodes.pop().unwrap();
-    let peers = broadcaster
-        .routing_table
-        .read()
-        .select_broadcast_peers(Id::BITS as u32)
-        .unwrap();
+    let nonce = broadcaster.kadcast("Hello, world!".into()).await;
 
-    let nonce = rng.gen();
+    //  let peers = broadcaster
+    //      .routing_table
+    //      .read()
+    //      .select_broadcast_peers(Id::BITS as u32)
+    //      .unwrap();
 
-    for (height, addr) in peers {
-        let message = Message::Chunk(Chunk {
-            // Can be used to trace the broadcast. If set differently for each peer here, it will
-            // be the same within a propagation sub-tree.
-            nonce,
-            height,
-            data: Bytes::from("Hello, world!"),
-        });
+    //  let nonce = rng.gen();
 
-        assert!(broadcaster.unicast(addr, message).unwrap().await.is_ok());
-    }
+    //  for (height, addr) in peers {
+    //      let message = Message::Chunk(Chunk {
+    //          // Can be used to trace the broadcast. If set differently for each peer here, it will
+    //          // be the same within a propagation sub-tree.
+    //          nonce,
+    //          height,
+    //          data: Bytes::from("Hello, world!"),
+    //      });
+
+    //      assert!(broadcaster.unicast(addr, message).unwrap().await.is_ok());
+    //  }
 
     // This needs to be longer when the test is run with more nodes.
     tokio::time::sleep(std::time::Duration::from_millis(10)).await;

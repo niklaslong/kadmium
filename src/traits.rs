@@ -1,4 +1,15 @@
+use std::{collections::HashMap, net::SocketAddr, sync::Arc};
+
 use bytes::Bytes;
+use parking_lot::RwLock;
+use rand::{thread_rng, Rng};
+use time::OffsetDateTime;
+
+use crate::{
+    id::Id,
+    message::{Chunk, Message, Nonce},
+    router::RoutingTable,
+};
 
 /// A trait used to determine how message-wrapped data is handled.
 ///
@@ -20,4 +31,74 @@ pub trait ProcessData<S>: From<Bytes> {
     /// spawn a task; if you want to send it elsewhere for further processing, you could pass in a
     /// channel sender.
     fn process_data(&self, _state: S) {}
+}
+
+// self.ping().await;
+// self.mesh().await;
+// self.kadcast(block.into()).await;
+// self.kadcast(tx.into()).await;
+
+// struct AsyncRoutingTable {
+//     routing_table: Arc<RwLock<RoutingTable>>,
+//     sent_nonces: Arc<RwLock<HashMap<Nonce, OffsetDateTime>>>,
+// }
+
+#[async_trait::async_trait]
+pub trait Kadcast {
+    const PING_INTERVAL_SECS: u16 = 30;
+
+    // TODO: maybe make these depend on min peers?
+    const BOOTSTRAP_INTERVAL_SECS: u16 = 10;
+    const MESH_INTERVAL_SECS: u16 = 60;
+
+    // TODO: expose this as `AsyncRoutingTable`?
+    fn routing_table(&self) -> Arc<RwLock<RoutingTable>>;
+
+    async fn unicast(&self, dst: SocketAddr, message: Message);
+
+    async fn ping(&self) {}
+
+    async fn mesh(&self) {
+        // tokio::spawn(async move || loop {
+        //     let rt_g = self.routing_table.read();
+        //     // Continually mesh, if the peer count is less than the min.
+        //     let sleep_duration =
+        //         std::time::Duration::from_secs(if rt.peer_count() < rt.min_peers() {
+        //             BOOTSTRAP_INTERVAL_SECS
+        //         } else {
+        //             MESH_INTERVAL_SECS
+        //         });
+
+        //     tokio::time::sleep(sleep_duration).await;
+        // })
+    }
+
+    async fn kadcast(&self, data: Bytes) -> Nonce {
+        let peers = self
+            .routing_table()
+            .read()
+            .select_broadcast_peers(Id::BITS as u32)
+            .unwrap();
+
+        // TODO: record nonce somewhere.
+        let nonce = {
+            let mut rng = thread_rng();
+            rng.gen()
+        };
+
+        for (height, addr) in peers {
+            let message = Message::Chunk(Chunk {
+                // Can be used to trace the broadcast. If set differently for each peer here, it will
+                // be the same within a propagation sub-tree.
+                nonce,
+                height,
+                // Cheap as the backing storage is shared amongst instances.
+                data: data.clone(),
+            });
+
+            self.unicast(addr, message).await;
+        }
+
+        nonce
+    }
 }

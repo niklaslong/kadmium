@@ -10,7 +10,7 @@ use std::{
 use kadmium::{
     codec::MessageCodec,
     message::{Message, Nonce, Response},
-    Id, ProcessData, RoutingTable,
+    Id, Kadcast, ProcessData, RoutingTable,
 };
 use parking_lot::RwLock;
 use pea2pea::{
@@ -36,6 +36,27 @@ struct Data(String);
 impl ProcessData<KadNode> for Data {
     fn verify_data(&self, _state: KadNode) -> bool {
         matches!(self, Data(data) if data == "Hello, world!")
+    }
+
+    fn process_data(&self, _state: KadNode) {
+        let rt = tokio::runtime::Handle::current();
+
+        // The handle should be tracked by the external state's task accounting so it doesn't get
+        // dropped accidentally.
+        let _handle = rt.spawn(async {
+            println!("Running on the async executor, processing message data");
+        });
+    }
+}
+
+#[async_trait::async_trait]
+impl Kadcast for KadNode {
+    fn routing_table(&self) -> Arc<RwLock<RoutingTable>> {
+        self.routing_table.clone()
+    }
+
+    async fn unicast(&self, addr: SocketAddr, message: Message) {
+        let _ = Writing::unicast(self, addr, message).unwrap().await;
     }
 }
 
@@ -65,6 +86,14 @@ impl KadNode {
             routing_table: Arc::new(RwLock::new(RoutingTable::new(id, 255))),
             received_messages: Arc::new(RwLock::new(HashMap::new())),
         }
+    }
+
+    pub async fn start_periodic_tasks(&self) {
+        // PING/PONG
+        self.ping().await;
+
+        // OVERLAY CONSTRUCTION
+        self.mesh().await;
     }
 }
 
@@ -103,17 +132,26 @@ impl Reading for KadNode {
 
         match response {
             Some(Response::Unicast(message)) => {
-                let _ = self.unicast(source, message).unwrap().await;
+                Kadcast::unicast(self, source, message).await;
             }
             Some(Response::Broadcast(broadcast)) => {
                 for (addr, message) in broadcast {
-                    let _ = self.unicast(addr, message).unwrap().await;
+                    Kadcast::unicast(self, addr, message).await;
                 }
             }
             None => {}
         }
 
         Ok(())
+    }
+}
+
+impl Writing for KadNode {
+    type Message = Message;
+    type Codec = MessageCodec;
+
+    fn codec(&self, _addr: SocketAddr, _side: ConnectionSide) -> Self::Codec {
+        MessageCodec::new()
     }
 }
 
@@ -188,15 +226,6 @@ impl Handshake for KadNode {
         }
 
         Ok(conn)
-    }
-}
-
-impl Writing for KadNode {
-    type Message = Message;
-    type Codec = MessageCodec;
-
-    fn codec(&self, _addr: SocketAddr, _side: ConnectionSide) -> Self::Codec {
-        MessageCodec::new()
     }
 }
 

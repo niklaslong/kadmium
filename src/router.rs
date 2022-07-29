@@ -6,7 +6,7 @@ use std::{
     net::SocketAddr,
 };
 
-use rand::{seq::IteratorRandom, thread_rng, Fill};
+use rand::{seq::IteratorRandom, thread_rng, Fill, Rng};
 use time::OffsetDateTime;
 
 use crate::{
@@ -276,9 +276,23 @@ impl RoutingTable {
 
     // MESSAGE PROCESSING
 
+    //     pub fn register_message(&mut self, message: &mut Message) -> Message {
+    //         let mut rng = thread_rng();
+    //
+    //         match message {
+    //             Message::Ping(ping) =>
+    //
+    //         }
+    //
+    //         Message::Ping(Ping {
+    //             nonce: rng.gen(),
+    //             id: self.local_id(),
+    //         })
+    //     }
+
     /// Processes a peer's message. If it is a query, an appropriate response is returned to
     /// be sent.
-    pub fn process_message<S, T: ProcessData<S>>(
+    pub fn process_message<S: Clone, T: ProcessData<S>>(
         &mut self,
         state: S,
         message: Message,
@@ -359,7 +373,7 @@ impl RoutingTable {
         // continual or only when bootstrapping the network?
     }
 
-    fn process_chunk<S, T: ProcessData<S>>(
+    fn process_chunk<S: Clone, T: ProcessData<S>>(
         &self,
         state: S,
         chunk: Chunk,
@@ -367,7 +381,7 @@ impl RoutingTable {
         // Cheap as the backing storage is shared amongst instances.
         let data = chunk.data.clone();
         let data_as_t: T = chunk.data.into();
-        let is_kosher = data_as_t.verify_data(state);
+        let is_kosher = data_as_t.verify_data(state.clone());
 
         // This is where the buckets come in handy. When a node processes a chunk message, it
         // selects peers in buckets ]h, 0] and propagates the CHUNK message. If h = 0, no
@@ -375,6 +389,8 @@ impl RoutingTable {
         if !is_kosher {
             return None;
         }
+
+        data_as_t.process_data(state);
 
         // TODO: return the wrapped data as well as the peers to propagate to.
         self.select_broadcast_peers(chunk.height).map(|v| {
@@ -408,8 +424,10 @@ mod tests {
 
         // ... 0001 -> bucket i = 0
         assert!(rt.insert(Id::from_u16(1), "127.0.0.1:1".parse().unwrap(), None));
+
         // ... 0010 -> bucket i = 1
         assert!(rt.insert(Id::from_u16(2), "127.0.0.1:2".parse().unwrap(), None));
+
         // ... 0011 -> bucket i = 1
         // This should still return true, since no peers have been inserted into the buckets yet
         // and there is still space.
