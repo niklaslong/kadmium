@@ -29,13 +29,20 @@ pub enum Message {
 }
 
 impl Message {
-    pub fn nonce(&self) -> Option<Nonce> {
+    pub fn nonce(&self) -> Nonce {
         match self {
-            Message::Ping(ping) => Some(ping.nonce),
-            Message::Pong(pong) => Some(pong.nonce),
-            Message::FindKNodes(find_k_nodes) => Some(find_k_nodes.nonce),
-            Message::KNodes(k_nodes) => Some(k_nodes.nonce),
-            Message::Chunk(chunk) => Some(chunk.nonce),
+            Message::Ping(ping) => ping.nonce,
+            Message::Pong(pong) => pong.nonce,
+            Message::FindKNodes(find_k_nodes) => find_k_nodes.nonce,
+            Message::KNodes(k_nodes) => k_nodes.nonce,
+            Message::Chunk(chunk) => chunk.nonce,
+        }
+    }
+
+    pub fn is_response(&self) -> bool {
+        match self {
+            Message::Pong(_) | Message::KNodes(_) => true,
+            _ => false,
         }
     }
 }

@@ -13,9 +13,11 @@ use crate::{
 #[cfg_attr(doc_cfg, doc(cfg(feature = "sync")))]
 #[derive(Debug, Default, Clone)]
 /// A routing table implementation suitable for use in async contexts.
+///
+/// It wraps [`RoutingTable`] and adds [`Nonce`] checking for request/response pairs.
 pub struct SyncRoutingTable {
     routing_table: Arc<RwLock<RoutingTable>>,
-    pub sent_nonces: Arc<RwLock<HashMap<Nonce, OffsetDateTime>>>,
+    sent_nonces: Arc<RwLock<HashMap<Nonce, OffsetDateTime>>>,
 }
 
 impl SyncRoutingTable {
@@ -59,7 +61,10 @@ impl SyncRoutingTable {
         message: Message,
         source: SocketAddr,
     ) -> Option<Response> {
-        // TODO: check if the message is a response, if it is, record latency.
+        if message.is_response() && self.sent_nonces.read().contains_key(&message.nonce()) {
+            // TODO: record latency, should there be a separation with PING/PONG?
+        }
+
         self.routing_table
             .write()
             .process_message::<S, T>(state, message, source)

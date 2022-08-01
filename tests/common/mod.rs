@@ -117,13 +117,11 @@ impl Reading for KadNode {
         let span = self.node().span().clone();
         info!(parent: span.clone(), "processing {:?}", message);
 
-        if let Some(nonce) = message.nonce() {
-            assert!(self
-                .received_messages
-                .write()
-                .insert(nonce, message.clone())
-                .is_none())
-        }
+        assert!(self
+            .received_messages
+            .write()
+            .insert(message.nonce(), message.clone())
+            .is_none());
 
         let response =
             self.routing_table
