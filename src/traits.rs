@@ -42,6 +42,8 @@ pub trait Kadcast
 where
     Self: Clone + Send + Sync + 'static,
 {
+    /// The number of nodes to query for peers at each search.
+    const ALPHA: usize = 3;
     /// The interval between periodic pings in seconds.
     const PING_INTERVAL_SECS: u64 = 30;
     /// The interval between periodic requests for peers while below the mininum number of peers.
@@ -51,6 +53,12 @@ where
 
     /// Returns a clonable reference to the routing table.
     fn routing_table(&self) -> &SyncRoutingTable;
+
+    async fn is_connected(&self, addr: SocketAddr) -> bool;
+
+    async fn connect(&self, addr: SocketAddr) -> bool;
+
+    async fn disconnect(&self, addr: SocketAddr) -> bool;
 
     /// Sends a message to the destination address.
     async fn unicast(&self, dst: SocketAddr, message: Message);
@@ -79,18 +87,44 @@ where
 
     /// Starts the periodic peer discovery task.
     async fn peer(&self) {
-        // tokio::spawn(async move || loop {
-        //     let rt_g = self.routing_table.read();
-        //     // Continually mesh, if the peer count is less than the min.
-        //     let sleep_duration =
-        //         std::time::Duration::from_secs(if rt.peer_count() < rt.min_peers() {
-        //             BOOTSTRAP_INTERVAL_SECS
-        //         } else {
-        //             MESH_INTERVAL_SECS
-        //         });
+        let self_clone = self.clone();
 
-        //     tokio::time::sleep(sleep_duration).await;
-        // })
+        tokio::spawn(async move {
+            loop {
+                for (_id, addr) in self_clone.routing_table().select_search_peers(Self::ALPHA) {
+                    let is_connected = match self_clone.is_connected(addr).await {
+                        true => true,
+                        false => self_clone.connect(addr).await,
+                    };
+
+                    if is_connected {
+                        self_clone
+                            .unicast(
+                                addr,
+                                Message::FindKNodes(
+                                    self_clone.routing_table().generate_find_k_nodes(),
+                                ),
+                            )
+                            .await;
+                    }
+                }
+
+                let sleep_duration = {
+                    // Continually mesh, if the peer count is less than the min.
+                    std::time::Duration::from_secs(
+                        if self_clone.routing_table().connected_addrs().len()
+                            < self_clone.routing_table().min_peers().into()
+                        {
+                            Self::BOOTSTRAP_INTERVAL_SECS
+                        } else {
+                            Self::DISCOVERY_INTERVAL_SECS
+                        },
+                    )
+                };
+
+                tokio::time::sleep(sleep_duration).await;
+            }
+        });
     }
 
     /// Broadcast data to the network, following the kadcast protocol.

@@ -21,13 +21,13 @@ pub mod sync;
 const K: u8 = 20;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum ConnState {
+pub(crate) enum ConnState {
     Connected,
     Disconnected,
 }
 
 #[derive(Debug, Clone, Copy)]
-struct PeerMeta {
+pub struct PeerMeta {
     listening_addr: SocketAddr,
     conn_addr: Option<SocketAddr>,
     conn_state: ConnState,

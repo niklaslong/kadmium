@@ -77,6 +77,18 @@ impl Kadcast for KadNode {
         &self.routing_table
     }
 
+    async fn is_connected(&self, addr: SocketAddr) -> bool {
+        self.node().is_connected(addr)
+    }
+
+    async fn connect(&self, addr: SocketAddr) -> bool {
+        self.node().connect(addr).await.is_ok()
+    }
+
+    async fn disconnect(&self, addr: SocketAddr) -> bool {
+        self.node().disconnect(addr).await
+    }
+
     async fn unicast(&self, addr: SocketAddr, message: Message) {
         let span = self.node().span().clone();
         info!(parent: span.clone(), "sending {:?}", message);

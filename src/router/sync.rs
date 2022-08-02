@@ -6,8 +6,8 @@ use time::OffsetDateTime;
 
 use crate::{
     id::Id,
-    message::{Message, Nonce, Ping, Response},
-    router::RoutingTable,
+    message::{FindKNodes, Message, Nonce, Ping, Response},
+    router::{ConnState, RoutingTable},
     traits::ProcessData,
 };
 
@@ -17,6 +17,7 @@ use crate::{
 ///
 /// It wraps [`RoutingTable`] and adds [`Nonce`] checking for request/response pairs.
 pub struct SyncRoutingTable {
+    min_peers: u16,
     routing_table: Arc<RwLock<RoutingTable>>,
     sent_nonces: Arc<RwLock<HashMap<Nonce, OffsetDateTime>>>,
 }
@@ -31,6 +32,10 @@ impl SyncRoutingTable {
 
     pub fn local_id(&self) -> Id {
         self.routing_table.read().local_id()
+    }
+
+    pub fn min_peers(&self) -> u16 {
+        self.min_peers
     }
 
     pub fn insert(
@@ -58,6 +63,32 @@ impl SyncRoutingTable {
         self.routing_table.read().id_list.keys().copied().collect()
     }
 
+    pub fn select_search_peers(&self, alpha: usize) -> Vec<(Id, SocketAddr)> {
+        let mut ids: Vec<_> = self
+            .routing_table
+            .read()
+            .peer_list
+            .iter()
+            .map(|(&candidate_id, &candidate_meta)| {
+                let addr = match candidate_meta.conn_state {
+                    ConnState::Connected => {
+                        // SAFETY: must exist if connected.
+                        debug_assert!(candidate_meta.conn_addr.is_some());
+                        candidate_meta.conn_addr.unwrap()
+                    }
+                    ConnState::Disconnected => candidate_meta.listening_addr,
+                };
+
+                (candidate_id, addr)
+            })
+            .collect();
+
+        ids.sort_unstable_by_key(|(candidate_id, _)| candidate_id.log2_distance(&self.local_id()));
+        ids.truncate(alpha);
+
+        ids
+    }
+
     pub fn select_broadcast_peers(&self, height: u32) -> Option<Vec<(u32, SocketAddr)>> {
         self.routing_table.read().select_broadcast_peers(height)
     }
@@ -71,6 +102,20 @@ impl SyncRoutingTable {
             .insert(nonce, OffsetDateTime::now_utc());
 
         Ping {
+            nonce,
+            id: self.routing_table.read().local_id(),
+        }
+    }
+
+    pub fn generate_find_k_nodes(&self) -> FindKNodes {
+        let mut rng = thread_rng();
+        let nonce = rng.gen();
+
+        self.sent_nonces
+            .write()
+            .insert(nonce, OffsetDateTime::now_utc());
+
+        FindKNodes {
             nonce,
             id: self.routing_table.read().local_id(),
         }
