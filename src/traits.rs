@@ -54,10 +54,18 @@ where
     /// Returns a clonable reference to the routing table.
     fn routing_table(&self) -> &SyncRoutingTable;
 
+    /// Returns `true` if the address is connected, `false` if it isn't.
     async fn is_connected(&self, addr: SocketAddr) -> bool;
 
+    /// Connects to the address and returns if it was succesful or not.
+    ///
+    /// Note: Kadmium assumes this method calls [`SyncRoutingTable::insert`] and
+    /// [`SyncRoutingTable::set_connected`] appropriately.
     async fn connect(&self, addr: SocketAddr) -> bool;
 
+    /// Disconnects the address and returns `true` if it was connected, returns `false` if it wasn't.
+    ///
+    /// Note: Kadmium assumes this method calls [`SyncRoutingTable::set_disconnected`] appropriately.
     async fn disconnect(&self, addr: SocketAddr) -> bool;
 
     /// Sends a message to the destination address.
@@ -108,6 +116,8 @@ where
                             .await;
                     }
                 }
+
+                // TODO: disconnet logic and occasionally refresh peers.
 
                 let sleep_duration = {
                     // Continually mesh, if the peer count is less than the min.
