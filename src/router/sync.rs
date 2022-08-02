@@ -1,11 +1,12 @@
 use std::{collections::HashMap, net::SocketAddr, sync::Arc};
 
 use parking_lot::RwLock;
+use rand::{thread_rng, Rng};
 use time::OffsetDateTime;
 
 use crate::{
     id::Id,
-    message::{Message, Nonce, Response},
+    message::{Message, Nonce, Ping, Response},
     router::RoutingTable,
     traits::ProcessData,
 };
@@ -51,8 +52,28 @@ impl SyncRoutingTable {
         self.routing_table.write().set_disconnected(conn_addr)
     }
 
+    pub fn connected_addrs(&self) -> Vec<SocketAddr> {
+        // Easiest collection to access instead of iterating over the buckets or the entire peer
+        // list containing both connected and disconnected addrs.
+        self.routing_table.read().id_list.keys().copied().collect()
+    }
+
     pub fn select_broadcast_peers(&self, height: u32) -> Option<Vec<(u32, SocketAddr)>> {
         self.routing_table.read().select_broadcast_peers(height)
+    }
+
+    pub fn generate_ping(&self) -> Ping {
+        let mut rng = thread_rng();
+        let nonce = rng.gen();
+
+        self.sent_nonces
+            .write()
+            .insert(nonce, OffsetDateTime::now_utc());
+
+        Ping {
+            nonce,
+            id: self.routing_table.read().local_id(),
+        }
     }
 
     pub fn process_message<S: Clone, T: ProcessData<S>>(

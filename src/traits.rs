@@ -38,13 +38,16 @@ pub trait ProcessData<S>: From<Bytes> {
 #[cfg(feature = "sync")]
 #[cfg_attr(doc_cfg, doc(cfg(feature = "sync")))]
 #[async_trait::async_trait]
-pub trait Kadcast {
+pub trait Kadcast
+where
+    Self: Clone + Send + Sync + 'static,
+{
     /// The interval between periodic pings in seconds.
-    const PING_INTERVAL_SECS: u16 = 30;
+    const PING_INTERVAL_SECS: u64 = 30;
     /// The interval between periodic requests for peers while below the mininum number of peers.
-    const BOOTSTRAP_INTERVAL_SECS: u16 = 10;
+    const BOOTSTRAP_INTERVAL_SECS: u64 = 10;
     /// The interval between periodic requests for peers while above the minimum number of peers.
-    const DISCOVERY_INTERVAL_SECS: u16 = 60;
+    const DISCOVERY_INTERVAL_SECS: u64 = 60;
 
     /// Returns a clonable reference to the routing table.
     fn routing_table(&self) -> &SyncRoutingTable;
@@ -53,7 +56,26 @@ pub trait Kadcast {
     async fn unicast(&self, dst: SocketAddr, message: Message);
 
     /// Starts the periodic ping task.
-    async fn ping(&self) {}
+    async fn ping(&self) {
+        let self_clone = self.clone();
+
+        tokio::spawn(async move {
+            loop {
+                for addr in self_clone.routing_table().connected_addrs() {
+                    self_clone
+                        .unicast(
+                            addr,
+                            Message::Ping(self_clone.routing_table().generate_ping()),
+                        )
+                        .await
+                }
+
+                tokio::time::sleep(std::time::Duration::from_secs(Self::PING_INTERVAL_SECS)).await
+            }
+        });
+
+        // TODO: consider returning the task handle, or at least track it internally.
+    }
 
     /// Starts the periodic peer discovery task.
     async fn peer(&self) {

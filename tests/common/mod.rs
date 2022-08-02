@@ -4,7 +4,10 @@ use std::{
     collections::HashMap,
     io,
     net::{IpAddr, Ipv4Addr, SocketAddr},
-    sync::Arc,
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        Arc,
+    },
 };
 
 use kadmium::{
@@ -51,12 +54,21 @@ impl ProcessData<KadNode> for Data {
 
 #[async_trait::async_trait]
 impl Kadcast for KadNode {
-    // Returns a clonable reference to the routing table.
+    // Shorten the default for testing purposes.
+    const PING_INTERVAL_SECS: u64 = 1;
+
     fn routing_table(&self) -> &SyncRoutingTable {
         &self.routing_table
     }
 
     async fn unicast(&self, addr: SocketAddr, message: Message) {
+        // Track the sent messages to make test assertions easier.
+        let id = self.sent_message_counter.fetch_add(1, Ordering::SeqCst);
+        self.sent_messages.write().insert(id, message.clone());
+
+        let span = self.node().span().clone();
+        info!(parent: span.clone(), "sending {:?}", message);
+
         let _ = Writing::unicast(self, addr, message).unwrap().await;
     }
 }
@@ -71,6 +83,8 @@ impl From<Bytes> for Data {
 pub struct KadNode {
     pub node: Node,
     pub routing_table: SyncRoutingTable,
+    sent_message_counter: Arc<AtomicU64>,
+    pub sent_messages: Arc<RwLock<HashMap<u64, Message>>>,
     pub received_messages: Arc<RwLock<HashMap<Nonce, Message>>>,
 }
 
@@ -85,6 +99,8 @@ impl KadNode {
             .await
             .unwrap(),
             routing_table: SyncRoutingTable::new(id, 20),
+            sent_message_counter: Arc::new(AtomicU64::new(0)),
+            sent_messages: Arc::new(RwLock::new(HashMap::new())),
             received_messages: Arc::new(RwLock::new(HashMap::new())),
         }
     }
