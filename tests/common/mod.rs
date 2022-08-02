@@ -10,6 +10,7 @@ use std::{
     },
 };
 
+use bytes::Bytes;
 use kadmium::{
     codec::MessageCodec,
     message::{Message, Nonce, Response},
@@ -24,6 +25,23 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tracing::*;
 use tracing_subscriber::{fmt, EnvFilter};
 
+#[macro_export]
+macro_rules! wait_until {
+    ($limit_secs: expr, $condition: expr) => {
+        let now = std::time::Instant::now();
+        loop {
+            if $condition {
+                break;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(1)).await;
+            assert!(
+                now.elapsed() <= std::time::Duration::from_secs($limit_secs),
+                "timed out!"
+            )
+        }
+    };
+}
+
 #[allow(dead_code)]
 pub fn enable_tracing() {
     fmt()
@@ -31,8 +49,6 @@ pub fn enable_tracing() {
         .with_env_filter(EnvFilter::from_default_env())
         .init();
 }
-
-use bytes::Bytes;
 
 struct Data(String);
 
@@ -62,12 +78,12 @@ impl Kadcast for KadNode {
     }
 
     async fn unicast(&self, addr: SocketAddr, message: Message) {
+        let span = self.node().span().clone();
+        info!(parent: span.clone(), "sending {:?}", message);
+
         // Track the sent messages to make test assertions easier.
         let id = self.sent_message_counter.fetch_add(1, Ordering::SeqCst);
         self.sent_messages.write().insert(id, message.clone());
-
-        let span = self.node().span().clone();
-        info!(parent: span.clone(), "sending {:?}", message);
 
         let _ = Writing::unicast(self, addr, message).unwrap().await;
     }
@@ -83,8 +99,11 @@ impl From<Bytes> for Data {
 pub struct KadNode {
     pub node: Node,
     pub routing_table: SyncRoutingTable,
-    sent_message_counter: Arc<AtomicU64>,
+
+    pub sent_message_counter: Arc<AtomicU64>,
     pub sent_messages: Arc<RwLock<HashMap<u64, Message>>>,
+
+    pub received_message_counter: Arc<AtomicU64>,
     pub received_messages: Arc<RwLock<HashMap<Nonce, Message>>>,
 }
 
@@ -99,8 +118,11 @@ impl KadNode {
             .await
             .unwrap(),
             routing_table: SyncRoutingTable::new(id, 20),
+
             sent_message_counter: Arc::new(AtomicU64::new(0)),
             sent_messages: Arc::new(RwLock::new(HashMap::new())),
+
+            received_message_counter: Arc::new(AtomicU64::new(0)),
             received_messages: Arc::new(RwLock::new(HashMap::new())),
         }
     }
@@ -132,6 +154,9 @@ impl Reading for KadNode {
     async fn process_message(&self, source: SocketAddr, message: Self::Message) -> io::Result<()> {
         let span = self.node().span().clone();
         info!(parent: span.clone(), "processing {:?}", message);
+
+        // Track the received messages to make test assertions easier.
+        self.received_message_counter.fetch_add(1, Ordering::SeqCst);
 
         assert!(self
             .received_messages

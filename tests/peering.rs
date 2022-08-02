@@ -1,5 +1,7 @@
 #![cfg(all(feature = "codec", feature = "sync"))]
 
+use std::sync::atomic::Ordering;
+
 use kadmium::{Id, Kadcast};
 use pea2pea::{
     protocols::{Handshake, Reading, Writing},
@@ -43,7 +45,12 @@ async fn periodic_ping_pong() {
         .await
         .is_ok());
 
-    tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+    // Wait until N responses (PONGs) have been received back.
+    const N: usize = 2;
+    wait_until!(
+        3,
+        node_a.received_message_counter.load(Ordering::Relaxed) == N as u64
+    );
 
     // Freeze state for assertions.
     let a_sent_g = node_a.sent_messages.read();
@@ -53,7 +60,6 @@ async fn periodic_ping_pong() {
     let b_received_g = node_b.received_messages.read();
 
     // Two messages should have been sent in the interval of time.
-    const N: usize = 2;
     assert_eq!(a_sent_g.len(), N);
     assert_eq!(b_received_g.len(), N);
 
