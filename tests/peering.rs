@@ -1,8 +1,6 @@
 #![cfg(all(feature = "codec", feature = "sync"))]
 
-use std::{collections::HashSet, sync::atomic::Ordering};
-
-use kadmium::{message::Message, Id, Kadcast};
+use kadmium::{Id, Kadcast};
 use pea2pea::{
     protocols::{Handshake, Reading, Writing},
     Pea2Pea,
@@ -15,7 +13,7 @@ use crate::common::{enable_tracing, KadNode};
 
 #[tokio::test]
 async fn periodic_ping_pong() {
-    enable_tracing();
+    // enable_tracing();
 
     let mut rng = thread_rng();
     let id_a = Id::new(rng.gen());
@@ -60,14 +58,14 @@ async fn periodic_ping_pong() {
     assert_eq!(b_received_g.len(), N);
 
     for i in 0..N as u64 {
-        // Check PINGs.
+        // Check PINGs (A -> B).
         let (n, sent_message) = a_sent_g.get_key_value(&i).unwrap();
         let (_nonce, received) = b_received_g.get_key_value(&sent_message.nonce()).unwrap();
 
         assert_eq!(*n, i);
         assert_eq!(received, sent_message);
 
-        // Check PONGs.
+        // Check PONGs (B -> A).
         let (n, sent_message) = b_sent_g.get_key_value(&i).unwrap();
         let (_nonce, received) = a_received_g.get_key_value(&sent_message.nonce()).unwrap();
 

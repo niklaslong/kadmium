@@ -14,9 +14,9 @@ keywords = ["p2p", "peer-to-peer", "networking"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [features]
 default = []
-sync = ["async-trait", "parking_lot", "tokio"]
 full = ["codec", "sync"]
 codec = ["tokio-util/codec", "bincode", "bytes/serde"]
+sync = ["async-trait", "parking_lot", "tokio"]
 
 [dependencies]
 rand = "0.8.5"
