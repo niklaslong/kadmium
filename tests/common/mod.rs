@@ -25,23 +25,6 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tracing::*;
 use tracing_subscriber::{fmt, EnvFilter};
 
-#[macro_export]
-macro_rules! wait_until {
-    ($limit_secs: expr, $condition: expr) => {
-        let now = std::time::Instant::now();
-        loop {
-            if $condition {
-                break;
-            }
-            tokio::time::sleep(std::time::Duration::from_millis(1)).await;
-            assert!(
-                now.elapsed() <= std::time::Duration::from_secs($limit_secs),
-                "timed out!"
-            )
-        }
-    };
-}
-
 #[allow(dead_code)]
 pub fn enable_tracing() {
     fmt()
@@ -70,8 +53,9 @@ impl ProcessData<KadNode> for Data {
 
 #[async_trait::async_trait]
 impl Kadcast for KadNode {
-    // Shorten the default for testing purposes.
+    // Shorten the defaults for testing purposes.
     const PING_INTERVAL_SECS: u64 = 1;
+    const BOOTSTRAP_INTERVAL_SECS: u64 = 1;
 
     fn routing_table(&self) -> &SyncRoutingTable {
         &self.routing_table
@@ -91,7 +75,7 @@ impl Kadcast for KadNode {
 
     async fn unicast(&self, addr: SocketAddr, message: Message) {
         let span = self.node().span().clone();
-        info!(parent: span.clone(), "sending {:?}", message);
+        info!(parent: span.clone(), "sending {:?} to {}", message.variant_as_str(), addr);
 
         // Track the sent messages to make test assertions easier.
         let id = self.sent_message_counter.fetch_add(1, Ordering::SeqCst);
@@ -165,7 +149,7 @@ impl Reading for KadNode {
 
     async fn process_message(&self, source: SocketAddr, message: Self::Message) -> io::Result<()> {
         let span = self.node().span().clone();
-        info!(parent: span.clone(), "processing {:?}", message);
+        info!(parent: span.clone(), "processing {:?} from {}", message.variant_as_str(), source);
 
         // Track the received messages to make test assertions easier.
         self.received_message_counter.fetch_add(1, Ordering::SeqCst);
@@ -229,9 +213,7 @@ impl Handshake for KadNode {
                 peer_addr.set_port(peer_port);
 
                 // Insert the peer.
-                assert!(self
-                    .routing_table
-                    .insert(peer_id, peer_addr, Some(conn_addr)));
+                assert!(self.routing_table.insert(peer_id, peer_addr));
 
                 // Respond with our local ID and port.
                 stream.write_all(&local_id.bytes()).await?;
@@ -240,7 +222,7 @@ impl Handshake for KadNode {
                     .await?;
 
                 // Set the peer as connected.
-                assert!(self.routing_table.set_connected(conn_addr));
+                assert!(self.routing_table.set_connected(peer_id, conn_addr));
             }
 
             // The node initiated the connection.
@@ -265,10 +247,8 @@ impl Handshake for KadNode {
                 // should have been checked before opening the connection and it will be
                 // checked again in `set_connected`. Idem, `insert` shouldn't be needed here,
                 // since we should only be initiating connections with peers we know about.
-                assert!(self
-                    .routing_table
-                    .insert(peer_id, peer_addr, Some(peer_addr)));
-                assert!(self.routing_table.set_connected(peer_addr));
+                assert!(self.routing_table.insert(peer_id, peer_addr));
+                assert!(self.routing_table.set_connected(peer_id, peer_addr));
             }
         }
 

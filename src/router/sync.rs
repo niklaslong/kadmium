@@ -17,7 +17,6 @@ use crate::{
 ///
 /// It wraps [`RoutingTable`] and adds [`Nonce`] checking for request/response pairs.
 pub struct SyncRoutingTable {
-    min_peers: u16,
     routing_table: Arc<RwLock<RoutingTable>>,
     sent_nonces: Arc<RwLock<HashMap<Nonce, OffsetDateTime>>>,
 }
@@ -34,27 +33,20 @@ impl SyncRoutingTable {
         self.routing_table.read().local_id()
     }
 
-    pub fn min_peers(&self) -> u16 {
-        self.min_peers
+    pub fn insert(&self, id: Id, listening_addr: SocketAddr) -> bool {
+        self.routing_table.write().insert(id, listening_addr)
     }
 
-    pub fn insert(
-        &self,
-        id: Id,
-        listening_addr: SocketAddr,
-        conn_addr: Option<SocketAddr>,
-    ) -> bool {
-        self.routing_table
-            .write()
-            .insert(id, listening_addr, conn_addr)
-    }
-
-    pub fn set_connected(&self, conn_addr: SocketAddr) -> bool {
-        self.routing_table.write().set_connected(conn_addr)
+    pub fn set_connected(&self, id: Id, conn_addr: SocketAddr) -> bool {
+        self.routing_table.write().set_connected(id, conn_addr)
     }
 
     pub fn set_disconnected(&self, conn_addr: SocketAddr) {
         self.routing_table.write().set_disconnected(conn_addr)
+    }
+
+    pub fn is_connected(&self, addr: SocketAddr) -> bool {
+        self.routing_table.read().id_list.contains_key(&addr)
     }
 
     pub fn connected_addrs(&self) -> Vec<SocketAddr> {
@@ -63,27 +55,29 @@ impl SyncRoutingTable {
         self.routing_table.read().id_list.keys().copied().collect()
     }
 
-    pub fn select_search_peers(&self, alpha: usize) -> Vec<(Id, SocketAddr)> {
+    pub fn select_search_peers(&self, alpha: usize) -> Vec<(Id, SocketAddr, bool)> {
         let mut ids: Vec<_> = self
             .routing_table
             .read()
             .peer_list
             .iter()
             .map(|(&candidate_id, &candidate_meta)| {
-                let addr = match candidate_meta.conn_state {
+                let (addr, is_connected) = match candidate_meta.conn_state {
                     ConnState::Connected => {
                         // SAFETY: must exist if connected.
                         debug_assert!(candidate_meta.conn_addr.is_some());
-                        candidate_meta.conn_addr.unwrap()
+                        (candidate_meta.conn_addr.unwrap(), true)
                     }
-                    ConnState::Disconnected => candidate_meta.listening_addr,
+                    ConnState::Disconnected => (candidate_meta.listening_addr, false),
                 };
 
-                (candidate_id, addr)
+                (candidate_id, addr, is_connected)
             })
             .collect();
 
-        ids.sort_unstable_by_key(|(candidate_id, _)| candidate_id.log2_distance(&self.local_id()));
+        ids.sort_unstable_by_key(|(candidate_id, _, _)| {
+            candidate_id.log2_distance(&self.local_id())
+        });
         ids.truncate(alpha);
 
         ids

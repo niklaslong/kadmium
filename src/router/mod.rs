@@ -103,12 +103,7 @@ impl RoutingTable {
 
     /// Returns `true` if the record exists already or was inserted, `false` if an attempt was made to
     /// insert our local identifier.
-    pub fn insert(
-        &mut self,
-        id: Id,
-        listening_addr: SocketAddr,
-        conn_addr: Option<SocketAddr>,
-    ) -> bool {
+    pub fn insert(&mut self, id: Id, listening_addr: SocketAddr) -> bool {
         // Buckets should only contain connected peers. The other structures should track
         // connection state.
 
@@ -135,28 +130,17 @@ impl RoutingTable {
             .entry(id)
             .and_modify(|meta| {
                 meta.listening_addr = listening_addr;
-                meta.conn_addr = conn_addr;
             })
-            .or_insert_with(|| {
-                PeerMeta::new(listening_addr, conn_addr, ConnState::Disconnected, None)
-            });
+            .or_insert_with(|| PeerMeta::new(listening_addr, None, ConnState::Disconnected, None));
 
         self.id_list.insert(listening_addr, id);
-        if let Some(addr) = conn_addr {
-            self.id_list.insert(addr, id);
-        }
 
         true
     }
 
     /// Returns whether or not there is space in the bucket corresponding to the identifier and the
     /// appropriate bucket index if there is.
-    pub fn can_connect(&mut self, conn_addr: SocketAddr) -> (bool, Option<u32>) {
-        let id = match self.peer_id(conn_addr) {
-            Some(id) => id,
-            None => return (false, None),
-        };
-
+    pub fn can_connect(&mut self, id: Id, conn_addr: SocketAddr) -> (bool, Option<u32>) {
         let i = match self.local_id().log2_distance(&id) {
             Some(i) => i,
             None => return (false, None),
@@ -182,15 +166,18 @@ impl RoutingTable {
 
     /// Sets the peer as connected on the routing table, returning `false` if there is no room to
     /// connect the peer.
-    pub fn set_connected(&mut self, conn_addr: SocketAddr) -> bool {
-        match (self.can_connect(conn_addr), self.peer_id(conn_addr)) {
-            ((true, Some(i)), Some(id)) => {
+    pub fn set_connected(&mut self, id: Id, conn_addr: SocketAddr) -> bool {
+        match self.can_connect(id, conn_addr) {
+            (true, Some(i)) => {
                 if let (Some(peer_meta), Some(bucket)) =
                     (self.peer_list.get_mut(&id), self.buckets.get_mut(&i))
                 {
                     // If the bucket insert returns `false`, it means the id is already in the bucket and the
                     // peer is connected.
                     debug_assert!(bucket.insert(id));
+
+                    self.id_list.insert(conn_addr, id);
+                    peer_meta.conn_addr = Some(conn_addr);
                     peer_meta.conn_state = ConnState::Connected;
                     peer_meta.last_seen = Some(OffsetDateTime::now_utc());
                 }
@@ -219,11 +206,14 @@ impl RoutingTable {
         }
 
         if let Some(peer_meta) = self.peer_list.get_mut(&id) {
-            peer_meta.conn_state = ConnState::Disconnected;
             // Remove the entry from the identifier list as the addr is likely to change when a
             // peer reconnects later (also this means we only have one collection tracking
             // disconnected peers for simplicity).
             self.id_list.remove(&peer_meta.listening_addr);
+            self.id_list.remove(&peer_meta.conn_addr.unwrap());
+
+            peer_meta.conn_addr = None;
+            peer_meta.conn_state = ConnState::Disconnected;
         }
     }
 
@@ -354,8 +344,8 @@ impl RoutingTable {
 
     fn process_k_nodes(&mut self, k_nodes: KNodes) {
         // Save the new peer information.
-        for (id, addr) in k_nodes.nodes {
-            self.insert(id, addr, None);
+        for (id, listening_addr) in k_nodes.nodes {
+            self.insert(id, listening_addr);
         }
 
         // TODO: work out who to connect with to continue the recursive search. Should this be
@@ -409,18 +399,18 @@ mod tests {
         let mut rt = RoutingTable::new(Id::from_u16(0), 1);
 
         // Attempt to insert our local id.
-        assert!(!rt.insert(rt.local_id, "127.0.0.1:0".parse().unwrap(), None));
+        assert!(!rt.insert(rt.local_id, "127.0.0.1:0".parse().unwrap()));
 
         // ... 0001 -> bucket i = 0
-        assert!(rt.insert(Id::from_u16(1), "127.0.0.1:1".parse().unwrap(), None));
+        assert!(rt.insert(Id::from_u16(1), "127.0.0.1:1".parse().unwrap()));
 
         // ... 0010 -> bucket i = 1
-        assert!(rt.insert(Id::from_u16(2), "127.0.0.1:2".parse().unwrap(), None));
+        assert!(rt.insert(Id::from_u16(2), "127.0.0.1:2".parse().unwrap()));
 
         // ... 0011 -> bucket i = 1
         // This should still return true, since no peers have been inserted into the buckets yet
         // and there is still space.
-        assert!(rt.insert(Id::from_u16(3), "127.0.0.1:3".parse().unwrap(), None));
+        assert!(rt.insert(Id::from_u16(3), "127.0.0.1:3".parse().unwrap()));
     }
 
     #[test]
@@ -430,18 +420,21 @@ mod tests {
 
         // ... 0001 -> bucket i = 0
         let addr = "127.0.0.1:1".parse().unwrap();
-        rt.insert(Id::from_u16(1), addr, Some(addr));
-        assert!(rt.set_connected(addr));
+        let id = Id::from_u16(1);
+        rt.insert(id, addr);
+        assert!(rt.set_connected(id, addr));
 
         // ... 0010 -> bucket i = 1
         let addr = "127.0.0.1:2".parse().unwrap();
-        rt.insert(Id::from_u16(2), addr, Some(addr));
-        assert!(rt.set_connected(addr));
+        let id = Id::from_u16(2);
+        rt.insert(id, addr);
+        assert!(rt.set_connected(id, addr));
 
         // ... 0011 -> bucket i = 1
         let addr = "127.0.0.1:3".parse().unwrap();
-        rt.insert(Id::from_u16(3), addr, Some(addr));
-        assert!(!rt.set_connected(addr));
+        let id = Id::from_u16(3);
+        rt.insert(id, addr);
+        assert!(!rt.set_connected(id, addr));
     }
 
     #[test]
@@ -460,8 +453,8 @@ mod tests {
             .collect();
 
         for peer in &peers {
-            assert!(rt.insert(peer.0, peer.1, Some(peer.1)));
-            assert!(rt.set_connected(peer.1));
+            assert!(rt.insert(peer.0, peer.1));
+            assert!(rt.set_connected(peer.0, peer.1));
         }
 
         let k = 3;
@@ -490,8 +483,8 @@ mod tests {
 
         for peer in peers {
             // Conn address is listening address (all peers received the connections).
-            assert!(rt.insert(peer.0, peer.1, Some(peer.1)));
-            assert!(rt.set_connected(peer.1));
+            assert!(rt.insert(peer.0, peer.1));
+            assert!(rt.set_connected(peer.0, peer.1));
         }
 
         // Find the random addresses in each bucket.

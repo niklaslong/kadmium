@@ -29,6 +29,16 @@ pub enum Message {
 }
 
 impl Message {
+    pub fn variant_as_str(&self) -> &str {
+        match self {
+            Message::Ping(_) => "ping",
+            Message::Pong(_) => "pong",
+            Message::FindKNodes(_) => "find_k_nodes",
+            Message::KNodes(_) => "k_nodes",
+            Message::Chunk(_) => "chunk",
+        }
+    }
+
     pub fn nonce(&self) -> Nonce {
         match self {
             Message::Ping(ping) => ping.nonce,

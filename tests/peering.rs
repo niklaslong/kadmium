@@ -1,11 +1,13 @@
 #![cfg(all(feature = "codec", feature = "sync"))]
 
-use std::sync::atomic::Ordering;
+use std::{sync::atomic::Ordering, time::Duration};
 
+use deadline::deadline;
 use kadmium::{Id, Kadcast};
 use pea2pea::{
+    connect_nodes,
     protocols::{Handshake, Reading, Writing},
-    Pea2Pea,
+    Pea2Pea, Topology,
 };
 use rand::{thread_rng, Rng};
 
@@ -47,10 +49,10 @@ async fn periodic_ping_pong() {
 
     // Wait until N responses (PONGs) have been received back.
     const N: usize = 2;
-    wait_until!(
-        3,
-        node_a.received_message_counter.load(Ordering::Relaxed) == N as u64
-    );
+    deadline!(std::time::Duration::from_secs(3), move || node_a
+        .received_message_counter
+        .load(Ordering::Relaxed)
+        == N as u64);
 
     // Freeze state for assertions.
     let a_sent_g = node_a.sent_messages.read();
@@ -78,4 +80,45 @@ async fn periodic_ping_pong() {
         assert_eq!(*n, i);
         assert_eq!(received, sent_message);
     }
+}
+
+#[tokio::test]
+async fn bootstrap_peering() {
+    // enable_tracing();
+
+    // Create a topology.
+    const N: usize = 3;
+
+    let mut nodes = Vec::with_capacity(N);
+    for _ in 0..N {
+        let id = Id::rand();
+        let node = KadNode::new(id).await;
+        node.enable_handshake().await;
+        node.enable_reading().await;
+        node.enable_writing().await;
+
+        nodes.push(node);
+    }
+
+    // If this fails, it may be because the `ulimit` is not high enough.
+    assert!(connect_nodes(&nodes, Topology::Mesh).await.is_ok());
+
+    // Create a new node to bootstrap.
+    let id = Id::rand();
+    let node = KadNode::new(id).await;
+    node.enable_handshake().await;
+    node.enable_reading().await;
+    node.enable_writing().await;
+
+    // Enable the periodic peer discover task.
+    node.peer().await;
+
+    assert!(node
+        .node()
+        .connect(nodes.first().unwrap().node().listening_addr().unwrap())
+        .await
+        .is_ok());
+
+    deadline!(Duration::from_secs(3), move || node.node().num_connected()
+        == N);
 }

@@ -43,7 +43,9 @@ where
     Self: Clone + Send + Sync + 'static,
 {
     /// The number of nodes to query for peers at each search.
-    const ALPHA: usize = 3;
+    const ALPHA: u16 = 3;
+    /// The minimum peer count for this node.
+    const MIN_PEERS: u16 = 10;
     /// The interval between periodic pings in seconds.
     const PING_INTERVAL_SECS: u64 = 30;
     /// The interval between periodic requests for peers while below the mininum number of peers.
@@ -99,9 +101,12 @@ where
 
         tokio::spawn(async move {
             loop {
-                for (_id, addr) in self_clone.routing_table().select_search_peers(Self::ALPHA) {
-                    let is_connected = match self_clone.is_connected(addr).await {
-                        true => true,
+                for (id, addr, is_connected) in self_clone
+                    .routing_table()
+                    .select_search_peers(Self::ALPHA.into())
+                {
+                    let is_connected = match is_connected {
+                        true => self_clone.is_connected(addr).await,
                         false => self_clone.connect(addr).await,
                     };
 
@@ -117,13 +122,14 @@ where
                     }
                 }
 
+                // TODO: connect to a random set of disconnected peers if under min peers.
                 // TODO: disconnet logic and occasionally refresh peers.
 
                 let sleep_duration = {
                     // Continually mesh, if the peer count is less than the min.
                     std::time::Duration::from_secs(
                         if self_clone.routing_table().connected_addrs().len()
-                            < self_clone.routing_table().min_peers().into()
+                            < Self::MIN_PEERS.into()
                         {
                             Self::BOOTSTRAP_INTERVAL_SECS
                         } else {
