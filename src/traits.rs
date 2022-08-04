@@ -3,7 +3,7 @@ use std::net::SocketAddr;
 
 use bytes::Bytes;
 #[cfg(feature = "sync")]
-use rand::{thread_rng, Rng};
+use rand::{seq::SliceRandom, thread_rng, Rng};
 
 #[cfg(feature = "sync")]
 use crate::{
@@ -122,11 +122,29 @@ where
                     }
                 }
 
-                // TODO: connect to a random set of disconnected peers if under min peers.
                 // TODO: disconnet logic and occasionally refresh peers.
 
+                let peer_deficit = Self::MIN_PEERS as i128
+                    - self_clone.routing_table().connected_addrs().len() as i128;
+
+                if peer_deficit > 0 {
+                    let addrs: Vec<SocketAddr> = {
+                        let mut rng = rand::thread_rng();
+                        self_clone
+                            .routing_table()
+                            .disconnected_addrs()
+                            .choose_multiple(&mut rng, peer_deficit as usize)
+                            .copied()
+                            .collect()
+                    };
+
+                    for addr in addrs {
+                        self_clone.connect(addr).await;
+                    }
+                }
+
+                // Check the peer counts again.
                 let sleep_duration = {
-                    // Continually mesh, if the peer count is less than the min.
                     std::time::Duration::from_secs(
                         if self_clone.routing_table().connected_addrs().len()
                             < Self::MIN_PEERS.into()

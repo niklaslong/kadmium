@@ -54,8 +54,9 @@ impl ProcessData<KadNode> for Data {
 #[async_trait::async_trait]
 impl Kadcast for KadNode {
     // Shorten the defaults for testing purposes.
+    const MIN_PEERS: u16 = 20;
     const PING_INTERVAL_SECS: u64 = 1;
-    const BOOTSTRAP_INTERVAL_SECS: u64 = 1;
+    const BOOTSTRAP_INTERVAL_SECS: u64 = 2;
 
     fn routing_table(&self) -> &SyncRoutingTable {
         &self.routing_table
@@ -113,7 +114,7 @@ impl KadNode {
             })
             .await
             .unwrap(),
-            routing_table: SyncRoutingTable::new(id, 20),
+            routing_table: SyncRoutingTable::new(id, 20, 20),
 
             sent_message_counter: Arc::new(AtomicU64::new(0)),
             sent_messages: Arc::new(RwLock::new(HashMap::new())),

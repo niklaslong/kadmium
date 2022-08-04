@@ -15,6 +15,26 @@ mod common;
 #[allow(unused_imports)]
 use crate::common::{enable_tracing, KadNode};
 
+async fn create_n_nodes(n: usize, protocols: &str) -> Vec<KadNode> {
+    let mut nodes = Vec::with_capacity(n);
+    for _ in 0..n {
+        let node = KadNode::new(Id::rand()).await;
+
+        for char in protocols.chars() {
+            match char {
+                'h' => node.enable_handshake().await,
+                'r' => node.enable_reading().await,
+                'w' => node.enable_writing().await,
+                c => panic!("protocol: {} is unknown", c),
+            }
+        }
+
+        nodes.push(node)
+    }
+
+    nodes
+}
+
 #[tokio::test]
 async fn periodic_ping_pong() {
     // enable_tracing();
@@ -86,39 +106,27 @@ async fn periodic_ping_pong() {
 async fn bootstrap_peering() {
     // enable_tracing();
 
-    // Create a topology.
-    const N: usize = 3;
+    // Create a bunch of nodes...
+    const N: usize = 21;
+    let mut nodes = create_n_nodes(N, "hrw").await;
 
-    let mut nodes = Vec::with_capacity(N);
-    for _ in 0..N {
-        let id = Id::rand();
-        let node = KadNode::new(id).await;
-        node.enable_handshake().await;
-        node.enable_reading().await;
-        node.enable_writing().await;
-
-        nodes.push(node);
-    }
-
-    // If this fails, it may be because the `ulimit` is not high enough.
-    assert!(connect_nodes(&nodes, Topology::Mesh).await.is_ok());
-
-    // Create a new node to bootstrap.
-    let id = Id::rand();
-    let node = KadNode::new(id).await;
-    node.enable_handshake().await;
-    node.enable_reading().await;
-    node.enable_writing().await;
-
+    // ...with one extra node to use as a new node in the network.
+    let node = nodes.pop().unwrap();
     // Enable the periodic peer discover task.
     node.peer().await;
 
+    // Create the topology (N - 1 nodes), if this fails, it may be because the `ulimit` is not high
+    // enough.
+    assert!(connect_nodes(&nodes, Topology::Mesh).await.is_ok());
+
+    // Connect the new node into the network.
     assert!(node
         .node()
         .connect(nodes.first().unwrap().node().listening_addr().unwrap())
         .await
         .is_ok());
 
-    deadline!(Duration::from_secs(3), move || node.node().num_connected()
-        == N);
+    // As long as the node is under its min peers, it should keep connecting.
+    deadline!(Duration::from_secs(5), move || node.node().num_connected()
+        == N - 1);
 }

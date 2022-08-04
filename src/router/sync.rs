@@ -22,9 +22,9 @@ pub struct SyncRoutingTable {
 }
 
 impl SyncRoutingTable {
-    pub fn new(local_id: Id, max_bucket_size: u8) -> Self {
+    pub fn new(local_id: Id, max_bucket_size: u8, k: u8) -> Self {
         Self {
-            routing_table: Arc::new(RwLock::new(RoutingTable::new(local_id, max_bucket_size))),
+            routing_table: Arc::new(RwLock::new(RoutingTable::new(local_id, max_bucket_size, k))),
             ..Default::default()
         }
     }
@@ -46,13 +46,34 @@ impl SyncRoutingTable {
     }
 
     pub fn is_connected(&self, addr: SocketAddr) -> bool {
-        self.routing_table.read().id_list.contains_key(&addr)
+        let rt_g = self.routing_table.read();
+        if let Some(id) = rt_g.peer_id(addr) {
+            if let Some(peer_meta) = rt_g.peer_list.get(&id) {
+                return matches!(peer_meta.conn_state, ConnState::Connected);
+            }
+        }
+
+        false
+    }
+
+    pub fn disconnected_addrs(&self) -> Vec<SocketAddr> {
+        self.routing_table
+            .read()
+            .peer_list
+            .iter()
+            .filter(|(_, &peer_meta)| matches!(peer_meta.conn_state, ConnState::Disconnected))
+            .map(|(_, &peer_meta)| peer_meta.listening_addr)
+            .collect()
     }
 
     pub fn connected_addrs(&self) -> Vec<SocketAddr> {
-        // Easiest collection to access instead of iterating over the buckets or the entire peer
-        // list containing both connected and disconnected addrs.
-        self.routing_table.read().id_list.keys().copied().collect()
+        self.routing_table
+            .read()
+            .peer_list
+            .iter()
+            .filter(|(_, &peer_meta)| matches!(peer_meta.conn_state, ConnState::Connected))
+            .map(|(_, &peer_meta)| peer_meta.conn_addr.unwrap())
+            .collect()
     }
 
     pub fn select_search_peers(&self, alpha: usize) -> Vec<(Id, SocketAddr, bool)> {
@@ -76,7 +97,7 @@ impl SyncRoutingTable {
             .collect();
 
         ids.sort_unstable_by_key(|(candidate_id, _, _)| {
-            candidate_id.log2_distance(&self.local_id())
+            candidate_id.log2_distance(&self.routing_table.read().local_id())
         });
         ids.truncate(alpha);
 
