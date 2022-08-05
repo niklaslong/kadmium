@@ -1,11 +1,7 @@
 #![cfg(all(feature = "codec", feature = "sync"))]
 
-use kadmium::{Id, Kadcast};
-use pea2pea::{
-    connect_nodes,
-    protocols::{Handshake, Reading, Writing},
-    Pea2Pea, Topology,
-};
+use kadmium::Kadcast;
+use pea2pea::{connect_nodes, Pea2Pea, Topology};
 
 mod common;
 use rand::{seq::SliceRandom, thread_rng};

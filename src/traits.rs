@@ -44,8 +44,8 @@ where
 {
     /// The number of nodes to query for peers at each search.
     const ALPHA: u16 = 3;
-    /// The minimum peer count for this node.
-    const MIN_PEERS: u16 = 10;
+    /// The peer count target for this node.
+    const PEER_TARGET: u16 = 10;
     /// The interval between periodic pings in seconds.
     const PING_INTERVAL_SECS: u64 = 30;
     /// The interval between periodic requests for peers while below the mininum number of peers.
@@ -111,7 +111,7 @@ where
 
         tokio::spawn(async move {
             loop {
-                for (id, addr, is_connected) in self_clone
+                for (_id, addr, is_connected) in self_clone
                     .routing_table()
                     .select_search_peers(Self::ALPHA.into())
                 {
@@ -132,10 +132,25 @@ where
                     }
                 }
 
-                // TODO: disconnet logic and occasionally refresh peers.
-
-                let peer_deficit = Self::MIN_PEERS as i128
+                let peer_deficit = Self::PEER_TARGET as i128
                     - self_clone.routing_table().connected_addrs().len() as i128;
+
+                if peer_deficit < 0 {
+                    let addrs: Vec<SocketAddr> = {
+                        let mut rng = rand::thread_rng();
+
+                        self_clone
+                            .routing_table()
+                            .connected_addrs()
+                            .choose_multiple(&mut rng, peer_deficit.abs() as usize)
+                            .copied()
+                            .collect()
+                    };
+
+                    for addr in addrs {
+                        self_clone.disconnect(addr).await;
+                    }
+                }
 
                 if peer_deficit > 0 {
                     let addrs: Vec<SocketAddr> = {
@@ -157,7 +172,7 @@ where
                 let sleep_duration = {
                     std::time::Duration::from_secs(
                         if self_clone.routing_table().connected_addrs().len()
-                            < Self::MIN_PEERS.into()
+                            < Self::PEER_TARGET.into()
                         {
                             Self::BOOTSTRAP_INTERVAL_SECS
                         } else {

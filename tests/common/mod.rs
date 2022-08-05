@@ -24,7 +24,7 @@ use pea2pea::{
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tracing::*;
 use tracing_subscriber::{fmt, EnvFilter};
-
+#[allow(dead_code)]
 pub async fn create_n_nodes(n: usize, protocols: &str) -> Vec<KadNode> {
     let mut nodes = Vec::with_capacity(n);
     for _ in 0..n {
@@ -75,7 +75,7 @@ impl ProcessData<KadNode> for Data {
 #[async_trait::async_trait]
 impl Kadcast for KadNode {
     // Shorten the defaults for testing purposes.
-    const MIN_PEERS: u16 = 20;
+    const PEER_TARGET: u16 = 20;
     const PING_INTERVAL_SECS: u64 = 1;
     const BOOTSTRAP_INTERVAL_SECS: u64 = 2;
 
