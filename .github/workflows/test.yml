@@ -27,6 +27,9 @@ jobs:
       - name: Run tests with codec features
         run: cargo test --features codec
 
+      - name: Run tests with codec features
+        run: cargo test --features sync
+
       - name: Run tests with full features
         run: cargo test --features full
 
