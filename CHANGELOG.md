@@ -7,9 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0]
+
+### Added
+
+- A `Kadcast` trait to weave `kadmium` into an existing node implementation.
+- An async-compatible routing table implementation that is `Sync` and wraps the core routing table.
+- A `sync` feature flag to gate the above.
+
 ### Changed
 
 - APIs now use the connection address for lookups instead of the identifier.
+- Connected and disconnected peers are tracked more reliably now.
 
 ### Removed
 
@@ -55,7 +64,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Module visibility and re-exports to be more ergonomic.
 - Various improvements to crate documentation.
 
-[unreleased]: https://github.com/niklaslong/kadmium/compare/v0.1.0...HEAD
+[unreleased]: https://github.com/niklaslong/kadmium/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/niklaslong/kadmium/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/niklaslong/kadmium/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/niklaslong/kadmium/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/niklaslong/kadmium/compare/v0.1.0...v0.2.0
