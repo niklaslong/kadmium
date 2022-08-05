@@ -17,7 +17,7 @@ use crate::common::{create_n_nodes, enable_tracing, KadNode};
 async fn broadcast_full_mesh() {
     // enable_tracing();
 
-    const N: usize = 100;
+    const N: usize = 10;
     let mut nodes = create_n_nodes(N, "hrw").await;
 
     // If this fails, it may be because the `ulimit` is not high enough.
@@ -53,18 +53,19 @@ async fn break_connections(nodes: &[KadNode], n: usize) {
     }
 }
 
+#[ignore]
 #[tokio::test]
 async fn broadcast_partial_mesh() {
     // enable_tracing();
 
-    const N: usize = 100;
+    const N: usize = 10;
     let mut nodes = create_n_nodes(N, "hrwd").await;
 
     // If this fails, it may be because the `ulimit` is not high enough.
     assert!(connect_nodes(&nodes, Topology::Mesh).await.is_ok());
 
     // 9900/2 = 4950
-    break_connections(&nodes, 2475).await;
+    break_connections(&nodes, 4).await;
 
     let mut ack = 0;
     for node in &nodes {
@@ -77,7 +78,7 @@ async fn broadcast_partial_mesh() {
     let nonce = broadcaster.kadcast("Hello, world!".into()).await;
 
     // This needs to be longer when the test is run with more nodes.
-    tokio::time::sleep(std::time::Duration::from_millis(30000)).await;
+    tokio::time::sleep(std::time::Duration::from_millis(1000)).await;
 
     let mut received: u8 = 0;
 

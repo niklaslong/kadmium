@@ -135,7 +135,7 @@ impl KadNode {
             })
             .await
             .unwrap(),
-            routing_table: SyncRoutingTable::new(id, 100, 100),
+            routing_table: SyncRoutingTable::new(id, 10, 10),
 
             sent_message_counter: Arc::new(AtomicU64::new(0)),
             sent_messages: Arc::new(RwLock::new(HashMap::new())),
