@@ -13,27 +13,7 @@ use rand::{thread_rng, Rng};
 
 mod common;
 #[allow(unused_imports)]
-use crate::common::{enable_tracing, KadNode};
-
-async fn create_n_nodes(n: usize, protocols: &str) -> Vec<KadNode> {
-    let mut nodes = Vec::with_capacity(n);
-    for _ in 0..n {
-        let node = KadNode::new(Id::rand()).await;
-
-        for char in protocols.chars() {
-            match char {
-                'h' => node.enable_handshake().await,
-                'r' => node.enable_reading().await,
-                'w' => node.enable_writing().await,
-                c => panic!("protocol: {} is unknown", c),
-            }
-        }
-
-        nodes.push(node)
-    }
-
-    nodes
-}
+use crate::common::{create_n_nodes, enable_tracing, KadNode};
 
 #[tokio::test]
 async fn periodic_ping_pong() {

@@ -97,6 +97,16 @@ where
 
     /// Starts the periodic peer discovery task.
     async fn peer(&self) {
+        // TODO: a few current issues to consider:
+        //
+        // 1. identifiers are more likely to be in higher index buckets, not necessarily an issue
+        //    so long as bucket size is above the minimum number of peers.
+        // 2. the above also guaranties a search returning K nodes can indeed return K nodes, so
+        //    long as K is below the minimum number of peers. If K is larger a node will return at
+        //    worst min(min peers, K) and at best min(peers, K).
+        //
+        // Therefore: bucket size >= min peers >= K is likely ideal.
+
         let self_clone = self.clone();
 
         tokio::spawn(async move {

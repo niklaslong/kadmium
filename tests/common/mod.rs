@@ -25,6 +25,27 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tracing::*;
 use tracing_subscriber::{fmt, EnvFilter};
 
+pub async fn create_n_nodes(n: usize, protocols: &str) -> Vec<KadNode> {
+    let mut nodes = Vec::with_capacity(n);
+    for _ in 0..n {
+        let node = KadNode::new(Id::rand()).await;
+
+        for char in protocols.chars() {
+            match char {
+                'h' => node.enable_handshake().await,
+                'r' => node.enable_reading().await,
+                'w' => node.enable_writing().await,
+                'd' => node.enable_disconnect().await,
+                c => panic!("protocol: {} is unknown", c),
+            }
+        }
+
+        nodes.push(node)
+    }
+
+    nodes
+}
+
 #[allow(dead_code)]
 pub fn enable_tracing() {
     fmt()
@@ -41,13 +62,13 @@ impl ProcessData<KadNode> for Data {
     }
 
     fn process_data(&self, _state: KadNode) {
-        let rt = tokio::runtime::Handle::current();
+        //  let rt = tokio::runtime::Handle::current();
 
-        // The handle should be tracked by the external state's task accounting so it doesn't get
-        // dropped accidentally.
-        let _handle = rt.spawn(async {
-            println!("Running on the async executor, processing message data");
-        });
+        //  // The handle should be tracked by the external state's task accounting so it doesn't get
+        //  // dropped accidentally.
+        //  let _handle = rt.spawn(async {
+        //      println!("Running on the async executor, processing message data");
+        //  });
     }
 }
 
@@ -114,7 +135,7 @@ impl KadNode {
             })
             .await
             .unwrap(),
-            routing_table: SyncRoutingTable::new(id, 20, 20),
+            routing_table: SyncRoutingTable::new(id, 100, 100),
 
             sent_message_counter: Arc::new(AtomicU64::new(0)),
             sent_messages: Arc::new(RwLock::new(HashMap::new())),
