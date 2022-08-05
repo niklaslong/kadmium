@@ -87,7 +87,7 @@ async fn bootstrap_peering() {
     // enable_tracing();
 
     // Create a bunch of nodes...
-    const N: usize = 21;
+    const N: usize = 11;
     let mut nodes = create_n_nodes(N, "hrw").await;
 
     // ...with one extra node to use as a new node in the network.
