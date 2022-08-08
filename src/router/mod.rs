@@ -409,20 +409,62 @@ mod tests {
     #[test]
     fn insert() {
         let mut rt = RoutingTable::new(Id::from_u16(0), 1, 20);
-
-        // Attempt to insert our local id.
-        assert!(!rt.insert(rt.local_id, localhost_with_port(0)));
-
         // ... 0001 -> bucket i = 0
         assert!(rt.insert(Id::from_u16(1), localhost_with_port(1)));
-
         // ... 0010 -> bucket i = 1
         assert!(rt.insert(Id::from_u16(2), localhost_with_port(2)));
-
         // ... 0011 -> bucket i = 1
-        // This should still return true, since no peers have been inserted into the buckets yet
-        // and there is still space.
         assert!(rt.insert(Id::from_u16(3), localhost_with_port(3)));
+    }
+
+    #[test]
+    fn insert_defaults() {
+        let mut rt = RoutingTable::new(Id::from_u16(0), 1, 20);
+
+        let id = Id::from_u16(1);
+        let addr = localhost_with_port(1);
+
+        assert!(rt.insert(id, addr));
+
+        let meta = rt.peer_meta(&id).unwrap();
+        assert_eq!(meta.listening_addr, addr);
+        assert_eq!(meta.conn_addr, None);
+        assert_eq!(meta.conn_state, ConnState::Disconnected);
+        assert_eq!(meta.last_seen, None);
+    }
+
+    #[test]
+    fn insert_self() {
+        let mut rt = RoutingTable::new(Id::from_u16(0), 1, 20);
+        // Attempt to insert our local id.
+        assert!(!rt.insert(rt.local_id, localhost_with_port(0)));
+    }
+
+    #[test]
+    fn insert_duplicate() {
+        let mut rt = RoutingTable::new(Id::from_u16(0), 1, 20);
+
+        // ... 0001 -> bucket i = 0
+        // The double insert will still return true.
+        assert!(rt.insert(Id::from_u16(1), localhost_with_port(1)));
+        assert!(rt.insert(Id::from_u16(1), localhost_with_port(1)));
+    }
+
+    #[test]
+    fn insert_duplicate_updates_listening_addr() {
+        let mut rt = RoutingTable::new(Id::from_u16(0), 1, 20);
+
+        let id = Id::from_u16(1);
+        let addr = localhost_with_port(1);
+        assert!(rt.insert(id, addr));
+        assert_eq!(rt.peer_meta(&id).unwrap().listening_addr, addr);
+
+        // Inserting the same identifier with a different address should result in the new address
+        // getting stored.
+        let id = Id::from_u16(1);
+        let addr = localhost_with_port(2);
+        assert!(rt.insert(id, addr));
+        assert_eq!(rt.peer_meta(&id).unwrap().listening_addr, addr);
     }
 
     #[test]
