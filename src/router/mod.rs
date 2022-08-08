@@ -397,23 +397,28 @@ impl RoutingTable {
 mod tests {
     use super::*;
 
+    // Produces a local address from the supplied port.
+    fn localhost_with_port(port: u16) -> SocketAddr {
+        format!("127.0.0.1:{}", port).parse().unwrap()
+    }
+
     #[test]
     fn insert() {
         let mut rt = RoutingTable::new(Id::from_u16(0), 1, 20);
 
         // Attempt to insert our local id.
-        assert!(!rt.insert(rt.local_id, "127.0.0.1:0".parse().unwrap()));
+        assert!(!rt.insert(rt.local_id, localhost_with_port(0)));
 
         // ... 0001 -> bucket i = 0
-        assert!(rt.insert(Id::from_u16(1), "127.0.0.1:1".parse().unwrap()));
+        assert!(rt.insert(Id::from_u16(1), localhost_with_port(1)));
 
         // ... 0010 -> bucket i = 1
-        assert!(rt.insert(Id::from_u16(2), "127.0.0.1:2".parse().unwrap()));
+        assert!(rt.insert(Id::from_u16(2), localhost_with_port(2)));
 
         // ... 0011 -> bucket i = 1
         // This should still return true, since no peers have been inserted into the buckets yet
         // and there is still space.
-        assert!(rt.insert(Id::from_u16(3), "127.0.0.1:3".parse().unwrap()));
+        assert!(rt.insert(Id::from_u16(3), localhost_with_port(3)));
     }
 
     #[test]
@@ -422,19 +427,19 @@ mod tests {
         let mut rt = RoutingTable::new(Id::from_u16(0), 1, 20);
 
         // ... 0001 -> bucket i = 0
-        let addr = "127.0.0.1:1".parse().unwrap();
+        let addr = localhost_with_port(1);
         let id = Id::from_u16(1);
         rt.insert(id, addr);
         assert!(rt.set_connected(id, addr));
 
         // ... 0010 -> bucket i = 1
-        let addr = "127.0.0.1:2".parse().unwrap();
+        let addr = localhost_with_port(2);
         let id = Id::from_u16(2);
         rt.insert(id, addr);
         assert!(rt.set_connected(id, addr));
 
         // ... 0011 -> bucket i = 1
-        let addr = "127.0.0.1:3".parse().unwrap();
+        let addr = localhost_with_port(3);
         let id = Id::from_u16(3);
         rt.insert(id, addr);
         assert!(!rt.set_connected(id, addr));
@@ -447,12 +452,7 @@ mod tests {
         // Generate 5 identifiers and addressses.
         let peers: Vec<(Id, SocketAddr)> = (1..=5)
             .into_iter()
-            .map(|i| {
-                (
-                    Id::from_u16(i as u16),
-                    format!("127.0.0.1:{}", i).parse().unwrap(),
-                )
-            })
+            .map(|i| (Id::from_u16(i), localhost_with_port(i)))
             .collect();
 
         for peer in &peers {
@@ -476,12 +476,7 @@ mod tests {
         // Generate 5 identifiers and addressses.
         let peers: Vec<(Id, SocketAddr)> = (1..=5)
             .into_iter()
-            .map(|i| {
-                (
-                    Id::from_u16(i as u16),
-                    format!("127.0.0.1:{}", i).parse().unwrap(),
-                )
-            })
+            .map(|i| (Id::from_u16(i), localhost_with_port(i)))
             .collect();
 
         for peer in peers {
