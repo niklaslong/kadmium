@@ -50,10 +50,7 @@ impl Message {
     }
 
     pub fn is_response(&self) -> bool {
-        match self {
-            Message::Pong(_) | Message::KNodes(_) => true,
-            _ => false,
-        }
+        matches!(self, Message::Pong(_) | Message::KNodes(_))
     }
 }
 
