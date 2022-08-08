@@ -103,6 +103,10 @@ impl RoutingTable {
         self.id_list.get(&addr).copied()
     }
 
+    pub fn peer_meta(&self, id: &Id) -> Option<&PeerMeta> {
+        self.peer_list.get(id)
+    }
+
     /// Returns `true` if the record exists already or was inserted, `false` if an attempt was made to
     /// insert our local identifier.
     pub fn insert(&mut self, id: Id, listening_addr: SocketAddr) -> bool {

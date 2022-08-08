@@ -11,11 +11,11 @@ use crate::{
     traits::ProcessData,
 };
 
-#[cfg_attr(doc_cfg, doc(cfg(feature = "sync")))]
-#[derive(Debug, Default, Clone)]
 /// A routing table implementation suitable for use in async contexts.
 ///
 /// It wraps [`RoutingTable`] and adds [`Nonce`] checking for request/response pairs.
+#[cfg_attr(doc_cfg, doc(cfg(feature = "sync")))]
+#[derive(Debug, Default, Clone)]
 pub struct SyncRoutingTable {
     routing_table: Arc<RwLock<RoutingTable>>,
     sent_nonces: Arc<RwLock<HashMap<Nonce, OffsetDateTime>>>,
@@ -48,7 +48,7 @@ impl SyncRoutingTable {
     pub fn is_connected(&self, addr: SocketAddr) -> bool {
         let rt_g = self.routing_table.read();
         if let Some(id) = rt_g.peer_id(addr) {
-            if let Some(peer_meta) = rt_g.peer_list.get(&id) {
+            if let Some(peer_meta) = rt_g.peer_meta(&id) {
                 return matches!(peer_meta.conn_state, ConnState::Connected);
             }
         }
