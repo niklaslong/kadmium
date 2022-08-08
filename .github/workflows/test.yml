@@ -17,22 +17,7 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
+      - uses: taiki-e/install-action@cargo-hack
 
-      - name: Run tests with no default features
-        run: cargo test --no-default-features
-
-      - name: Run tests with default features
-        run: cargo test
-
-      - name: Run tests with codec features
-        run: cargo test --features codec
-
-      - name: Run tests with codec features
-        run: cargo test --features sync
-
-      - name: Run tests with full features
-        run: cargo test --features full
-
-      - name: Run tests with all features
-        run: cargo test --all-features
-
+      - name: Run tests with each feature
+        run: cargo hack test --each-feature
