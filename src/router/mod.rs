@@ -103,6 +103,7 @@ impl RoutingTable {
         self.id_list.get(&addr).copied()
     }
 
+    /// Returns the peer's metadata if it exists.
     pub fn peer_meta(&self, id: &Id) -> Option<&PeerMeta> {
         self.peer_list.get(id)
     }
@@ -443,8 +444,6 @@ mod tests {
     #[test]
     fn insert_duplicate() {
         let mut rt = RoutingTable::new(Id::from_u16(0), 1, 20);
-
-        // ... 0001 -> bucket i = 0
         // The double insert will still return true.
         assert!(rt.insert(Id::from_u16(1), localhost_with_port(1)));
         assert!(rt.insert(Id::from_u16(1), localhost_with_port(1)));
