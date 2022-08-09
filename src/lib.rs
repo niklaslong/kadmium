@@ -21,6 +21,4 @@ mod id;
 mod traits;
 
 pub use id::Id;
-#[cfg(feature = "sync")]
-pub use traits::Kadcast;
 pub use traits::ProcessData;

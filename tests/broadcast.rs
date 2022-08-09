@@ -1,6 +1,6 @@
 #![cfg(all(feature = "codec", feature = "sync"))]
 
-use kadmium::Kadcast;
+use kadmium::tcp::Kadcast;
 use pea2pea::{connect_nodes, Pea2Pea, Topology};
 
 mod common;

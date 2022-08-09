@@ -3,7 +3,7 @@
 use std::{sync::atomic::Ordering, time::Duration};
 
 use deadline::deadline;
-use kadmium::{Id, Kadcast};
+use kadmium::{tcp::Kadcast, Id};
 use pea2pea::{
     connect_nodes,
     protocols::{Handshake, Reading, Writing},
