@@ -1,5 +1,3 @@
-//! Core routing table implementation.
-
 use std::{
     cmp::Ordering,
     collections::{HashMap, HashSet},
@@ -15,9 +13,6 @@ use crate::{
     traits::ProcessData,
 };
 
-#[cfg(feature = "sync")]
-pub mod sync;
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum ConnState {
     Connected,
@@ -26,10 +21,10 @@ pub(crate) enum ConnState {
 
 #[derive(Debug, Clone, Copy)]
 pub struct PeerMeta {
-    listening_addr: SocketAddr,
-    conn_addr: Option<SocketAddr>,
-    conn_state: ConnState,
-    last_seen: Option<OffsetDateTime>,
+    pub(crate) listening_addr: SocketAddr,
+    pub(crate) conn_addr: Option<SocketAddr>,
+    pub(crate) conn_state: ConnState,
+    pub(crate) last_seen: Option<OffsetDateTime>,
 }
 
 impl PeerMeta {
@@ -60,7 +55,7 @@ pub struct RoutingTable {
     // The buckets constructed for broadcast purposes (only contains connected identifiers).
     buckets: HashMap<u32, HashSet<Id>>,
     // Maps identifiers to peer meta data (connected and disconnected).
-    peer_list: HashMap<Id, PeerMeta>,
+    pub(crate) peer_list: HashMap<Id, PeerMeta>,
     // Maps peer addresses to peer identifiers (connected only).
     id_list: HashMap<SocketAddr, Id>,
 }
@@ -99,7 +94,7 @@ impl RoutingTable {
     }
 
     /// Returns the identifier corresponding to the address, if it exists.
-    fn peer_id(&self, addr: SocketAddr) -> Option<Id> {
+    pub fn peer_id(&self, addr: SocketAddr) -> Option<Id> {
         self.id_list.get(&addr).copied()
     }
 

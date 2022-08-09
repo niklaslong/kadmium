@@ -14,7 +14,8 @@ use bytes::Bytes;
 use kadmium::{
     codec::MessageCodec,
     message::{Message, Nonce, Response},
-    Id, Kadcast, ProcessData, SyncRoutingTable,
+    tcp::SyncRoutingTable,
+    Id, Kadcast, ProcessData,
 };
 use parking_lot::RwLock;
 use pea2pea::{

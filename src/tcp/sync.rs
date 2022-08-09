@@ -7,7 +7,7 @@ use time::OffsetDateTime;
 use crate::{
     id::Id,
     message::{FindKNodes, Message, Nonce, Ping, Response},
-    router::{ConnState, RoutingTable},
+    tcp::{ConnState, RoutingTable},
     traits::ProcessData,
 };
 

@@ -9,7 +9,7 @@ use rand::{seq::SliceRandom, thread_rng, Rng};
 use crate::{
     id::Id,
     message::{Chunk, Message, Nonce},
-    router::sync::SyncRoutingTable,
+    tcp::SyncRoutingTable,
 };
 
 /// A trait used to determine how message-wrapped data is handled.
