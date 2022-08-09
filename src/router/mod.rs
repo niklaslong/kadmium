@@ -403,8 +403,26 @@ mod tests {
     use super::*;
 
     // Produces a local address from the supplied port.
+    // TODO: consider testing with random ports and IDs.
     fn localhost_with_port(port: u16) -> SocketAddr {
         format!("127.0.0.1:{}", port).parse().unwrap()
+    }
+
+    #[test]
+    fn peer_id_not_present() {
+        let rt = RoutingTable::new(Id::from_u16(0), 1, 20);
+        assert!(rt.peer_id(localhost_with_port(0)).is_none());
+    }
+
+    #[test]
+    fn peer_id_is_present() {
+        let mut rt = RoutingTable::new(Id::from_u16(0), 1, 20);
+
+        let id = Id::from_u16(1);
+        let addr = localhost_with_port(1);
+
+        assert!(rt.insert(id, addr));
+        assert_eq!(rt.peer_id(addr), Some(id));
     }
 
     #[test]
@@ -491,6 +509,12 @@ mod tests {
     }
 
     #[test]
+    fn set_connected_self() {
+        let mut rt = RoutingTable::new(Id::from_u16(0), 1, 20);
+        assert!(!rt.set_connected(rt.local_id(), localhost_with_port(0)));
+    }
+
+    #[test]
     fn find_k_closest() {
         let mut rt = RoutingTable::new(Id::from_u16(0), 5, 20);
 
@@ -512,6 +536,14 @@ mod tests {
         assert!(k_closest.contains(&peers[0]));
         assert!(k_closest.contains(&peers[1]));
         assert!(k_closest.contains(&peers[2]));
+    }
+
+    #[test]
+    fn find_k_closest_empty() {
+        let rt = RoutingTable::new(Id::from_u16(0), 5, 20);
+        let k = 3;
+        let k_closest = rt.find_k_closest(&rt.local_id, k);
+        assert_eq!(k_closest.len(), 0);
     }
 
     #[test]
