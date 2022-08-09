@@ -41,7 +41,7 @@ impl SyncRoutingTable {
         self.routing_table.write().set_connected(id, conn_addr)
     }
 
-    pub fn set_disconnected(&self, conn_addr: SocketAddr) {
+    pub fn set_disconnected(&self, conn_addr: SocketAddr) -> bool {
         self.routing_table.write().set_disconnected(conn_addr)
     }
 

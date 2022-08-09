@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The `set_disconnected` methods (`RoutingTable` and `SyncRoutingTable`) now return a `bool`.
+
 ## [0.5.1]
 
 ### Fixed

@@ -199,31 +199,40 @@ impl RoutingTable {
         }
     }
 
-    /// Removes an identifier from the buckets, sets the peer to disconnected.
-    pub fn set_disconnected(&mut self, conn_addr: SocketAddr) {
+    /// Removes an identifier from the buckets, sets the peer to disconnected and returns `true` on
+    /// success, `false` otherwise.
+    pub fn set_disconnected(&mut self, conn_addr: SocketAddr) -> bool {
         let id = match self.peer_id(conn_addr) {
             Some(id) => id,
-            None => return,
+            None => return false,
         };
 
-        let i = match self.local_id().log2_distance(&id) {
-            Some(i) => i,
-            None => return,
-        };
+        let i = self
+            .local_id()
+            .log2_distance(&id)
+            .expect("self can't have an identifier in the peer list");
 
-        if let Some(bucket) = self.buckets.get_mut(&i) {
-            bucket.remove(&id);
-        }
+        if let (Some(peer_meta), Some(bucket)) =
+            (self.peer_list.get_mut(&id), self.buckets.get_mut(&i))
+        {
+            let bucket_res = bucket.remove(&id);
+            debug_assert!(bucket_res);
 
-        if let Some(peer_meta) = self.peer_list.get_mut(&id) {
             // Remove the entry from the identifier list as the addr is likely to change when a
             // peer reconnects later (also this means we only have one collection tracking
             // disconnected peers for simplicity).
-            self.id_list.remove(&peer_meta.conn_addr.unwrap());
+            let id_list_res = self
+                .id_list
+                .remove(&peer_meta.conn_addr.expect("conn_addr must be present"));
+            debug_assert!(id_list_res.is_some());
 
             peer_meta.conn_addr = None;
             peer_meta.conn_state = ConnState::Disconnected;
+
+            return bucket_res && id_list_res.is_some();
         }
+
+        false
     }
 
     /// Selects the broadcast peers for a particular height, returns `None` if the broadcast
@@ -513,6 +522,22 @@ mod tests {
     fn set_connected_self() {
         let mut rt = RoutingTable::new(Id::from_u16(0), 1, 20);
         assert!(!rt.set_connected(rt.local_id(), localhost_with_port(0)));
+    }
+
+    #[test]
+    fn set_disconnected() {
+        let mut rt = RoutingTable::new(Id::from_u16(0), 1, 20);
+        let id = Id::from_u16(1);
+        let addr = localhost_with_port(1);
+        assert!(rt.insert(id, addr));
+        assert!(rt.set_connected(id, addr));
+        assert!(rt.set_disconnected(addr));
+    }
+
+    #[test]
+    fn set_disconnected_non_existant() {
+        let mut rt = RoutingTable::new(Id::from_u16(0), 1, 20);
+        assert!(!rt.set_disconnected(localhost_with_port(0)));
     }
 
     #[test]
