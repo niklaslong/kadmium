@@ -142,7 +142,7 @@ where
                         self_clone
                             .routing_table()
                             .connected_addrs()
-                            .choose_multiple(&mut rng, peer_deficit.abs() as usize)
+                            .choose_multiple(&mut rng, peer_deficit.unsigned_abs() as usize)
                             .copied()
                             .collect()
                     };

@@ -39,12 +39,7 @@ async fn break_connections(nodes: &[KadNode], n: usize) {
         let mut rng = thread_rng();
 
         let node = nodes.choose(&mut rng).unwrap();
-        let addr = node
-            .node()
-            .connected_addrs()
-            .choose(&mut rng)
-            .unwrap()
-            .clone();
+        let addr = *node.node().connected_addrs().choose(&mut rng).unwrap();
         assert!(node.disconnect(addr).await);
     }
 }
