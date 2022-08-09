@@ -94,3 +94,135 @@ pub struct Chunk {
     #[cfg_attr(feature = "codec", bincode(with_serde))]
     pub data: Bytes,
 }
+
+#[cfg(test)]
+mod tests {
+    use rand::{thread_rng, Rng};
+
+    use super::*;
+
+    #[test]
+    fn variant_as_str() {
+        assert_eq!(
+            Message::Ping(Ping {
+                nonce: 0,
+                id: Id::from_u16(0)
+            })
+            .variant_as_str(),
+            "ping"
+        );
+        assert_eq!(
+            Message::Pong(Pong {
+                nonce: 0,
+                id: Id::from_u16(0)
+            })
+            .variant_as_str(),
+            "pong"
+        );
+        assert_eq!(
+            Message::FindKNodes(FindKNodes {
+                nonce: 0,
+                id: Id::from_u16(0)
+            })
+            .variant_as_str(),
+            "find_k_nodes"
+        );
+        assert_eq!(
+            Message::KNodes(KNodes {
+                nonce: 0,
+                nodes: vec![]
+            })
+            .variant_as_str(),
+            "k_nodes"
+        );
+        assert_eq!(
+            Message::Chunk(Chunk {
+                nonce: 0,
+                height: 0,
+                data: Bytes::new()
+            })
+            .variant_as_str(),
+            "chunk"
+        );
+    }
+
+    #[test]
+    fn nonce() {
+        let mut rng = thread_rng();
+        let nonce = rng.gen();
+
+        assert_eq!(
+            Message::Ping(Ping {
+                nonce,
+                id: Id::from_u16(0)
+            })
+            .nonce(),
+            nonce
+        );
+        assert_eq!(
+            Message::Pong(Pong {
+                nonce,
+                id: Id::from_u16(0)
+            })
+            .nonce(),
+            nonce
+        );
+        assert_eq!(
+            Message::FindKNodes(FindKNodes {
+                nonce,
+                id: Id::from_u16(0)
+            })
+            .nonce(),
+            nonce
+        );
+        assert_eq!(
+            Message::KNodes(KNodes {
+                nonce,
+                nodes: vec![]
+            })
+            .nonce(),
+            nonce
+        );
+        assert_eq!(
+            Message::Chunk(Chunk {
+                nonce,
+                height: 0,
+                data: Bytes::new()
+            })
+            .nonce(),
+            nonce
+        );
+    }
+
+    #[test]
+    fn is_response() {
+        // RESPONSES
+        assert!(Message::Pong(Pong {
+            nonce: 0,
+            id: Id::from_u16(0)
+        })
+        .is_response());
+        assert!(Message::KNodes(KNodes {
+            nonce: 0,
+            nodes: vec![]
+        })
+        .is_response());
+        // NOT RESPONSES
+        assert!(!Message::Ping(Ping {
+            nonce: 0,
+            id: Id::from_u16(0)
+        })
+        .is_response());
+        assert!(!Message::FindKNodes(FindKNodes {
+            nonce: 0,
+            id: Id::from_u16(0)
+        })
+        .is_response());
+        assert!(!Message::Chunk(Chunk {
+            nonce: 0,
+            height: 0,
+            data: Bytes::new()
+        })
+        .is_response());
+    }
+}
