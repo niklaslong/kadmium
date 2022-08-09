@@ -183,7 +183,8 @@ impl RoutingTable {
                 {
                     // If the bucket insert returns `false`, it means the id is already in the bucket and the
                     // peer is connected.
-                    debug_assert!(bucket.insert(id));
+                    let _res = bucket.insert(id);
+                    debug_assert!(_res);
 
                     self.id_list.insert(conn_addr, id);
                     peer_meta.conn_addr = Some(conn_addr);
