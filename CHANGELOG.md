@@ -7,9 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.1]
+
 ### Fixed
 
-- The `set_connected` function now inserts the identifier into the bucket when compiled with `--release`.
+- The `RoutingTable::set_connected` function now inserts the identifier into the bucket when compiled with `--release`.
+
+### Added
+
+- The `RoutingTable::peer_meta` getter (returns a reference to `PeerMeta`).
 
 ## [0.5.0]
 
@@ -68,7 +74,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Module visibility and re-exports to be more ergonomic.
 - Various improvements to crate documentation.
 
-[unreleased]: https://github.com/niklaslong/kadmium/compare/v0.5.0...HEAD
+[unreleased]: https://github.com/niklaslong/kadmium/compare/v0.5.1...HEAD
+[0.5.1]: https://github.com/niklaslong/kadmium/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/niklaslong/kadmium/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/niklaslong/kadmium/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/niklaslong/kadmium/compare/v0.2.0...v0.3.0
