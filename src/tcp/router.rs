@@ -20,14 +20,14 @@ pub(crate) enum ConnState {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct PeerMeta {
+pub struct TcpMeta {
     pub(crate) listening_addr: SocketAddr,
     pub(crate) conn_addr: Option<SocketAddr>,
     pub(crate) conn_state: ConnState,
     pub(crate) last_seen: Option<OffsetDateTime>,
 }
 
-impl PeerMeta {
+impl TcpMeta {
     fn new(
         listening_addr: SocketAddr,
         conn_addr: Option<SocketAddr>,
@@ -55,7 +55,7 @@ pub struct RoutingTable {
     // The buckets constructed for broadcast purposes (only contains connected identifiers).
     buckets: HashMap<u32, HashSet<Id>>,
     // Maps identifiers to peer meta data (connected and disconnected).
-    pub(crate) peer_list: HashMap<Id, PeerMeta>,
+    pub(crate) peer_list: HashMap<Id, TcpMeta>,
     // Maps peer addresses to peer identifiers (connected only).
     id_list: HashMap<SocketAddr, Id>,
 }
@@ -99,7 +99,7 @@ impl RoutingTable {
     }
 
     /// Returns the peer's metadata if it exists.
-    pub fn peer_meta(&self, id: &Id) -> Option<&PeerMeta> {
+    pub fn peer_meta(&self, id: &Id) -> Option<&TcpMeta> {
         self.peer_list.get(id)
     }
 
@@ -133,7 +133,7 @@ impl RoutingTable {
             .and_modify(|meta| {
                 meta.listening_addr = listening_addr;
             })
-            .or_insert_with(|| PeerMeta::new(listening_addr, None, ConnState::Disconnected, None));
+            .or_insert_with(|| TcpMeta::new(listening_addr, None, ConnState::Disconnected, None));
 
         self.id_list.insert(listening_addr, id);
 
