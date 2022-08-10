@@ -9,6 +9,6 @@ mod traits;
 pub(crate) use router::ConnState;
 pub use router::TcpRouter;
 #[cfg(feature = "sync")]
-pub use sync::SyncRoutingTable;
+pub use sync::SyncTcpRouter;
 #[cfg(feature = "sync")]
 pub use traits::Kadcast;

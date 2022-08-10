@@ -9,7 +9,7 @@ use rand::{seq::SliceRandom, thread_rng, Rng};
 use crate::{
     core::id::Id,
     core::message::{Chunk, Message, Nonce},
-    tcp::SyncRoutingTable,
+    tcp::SyncTcpRouter,
 };
 
 /// A trait used to enable core kadcast functionality on the implementor.
@@ -32,20 +32,20 @@ where
     const DISCOVERY_INTERVAL_SECS: u64 = 60;
 
     /// Returns a clonable reference to the routing table.
-    fn routing_table(&self) -> &SyncRoutingTable;
+    fn routing_table(&self) -> &SyncTcpRouter;
 
     /// Returns `true` if the address is connected, `false` if it isn't.
     async fn is_connected(&self, addr: SocketAddr) -> bool;
 
     /// Connects to the address and returns if it was succesful or not.
     ///
-    /// Note: Kadmium assumes this method calls [`SyncRoutingTable::insert`] and
-    /// [`SyncRoutingTable::set_connected`] appropriately.
+    /// Note: Kadmium assumes this method calls [`SyncTcpRouter::insert`] and
+    /// [`SyncTcpRouter::set_connected`] appropriately.
     async fn connect(&self, addr: SocketAddr) -> bool;
 
     /// Disconnects the address and returns `true` if it was connected, returns `false` if it wasn't.
     ///
-    /// Note: Kadmium assumes this method calls [`SyncRoutingTable::set_disconnected`] appropriately.
+    /// Note: Kadmium assumes this method calls [`SyncTcpRouter::set_disconnected`] appropriately.
     async fn disconnect(&self, addr: SocketAddr) -> bool;
 
     /// Sends a message to the destination address.

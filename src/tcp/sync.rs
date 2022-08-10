@@ -18,12 +18,12 @@ use crate::{
 /// It wraps [`TcpRouter`] and adds [`Nonce`] checking for request/response pairs.
 #[cfg_attr(doc_cfg, doc(cfg(feature = "sync")))]
 #[derive(Debug, Default, Clone)]
-pub struct SyncRoutingTable {
+pub struct SyncTcpRouter {
     router: Arc<RwLock<TcpRouter>>,
     sent_nonces: Arc<RwLock<HashMap<Nonce, OffsetDateTime>>>,
 }
 
-impl SyncRoutingTable {
+impl SyncTcpRouter {
     pub fn new(local_id: Id, max_bucket_size: u8, k: u8) -> Self {
         Self {
             router: Arc::new(RwLock::new(TcpRouter::new(local_id, max_bucket_size, k))),

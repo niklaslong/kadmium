@@ -14,7 +14,7 @@ use bytes::Bytes;
 use kadmium::{
     codec::MessageCodec,
     message::{Message, Nonce, Response},
-    tcp::{Kadcast, SyncRoutingTable},
+    tcp::{Kadcast, SyncTcpRouter},
     Id, ProcessData,
 };
 use parking_lot::RwLock;
@@ -80,7 +80,7 @@ impl Kadcast for KadNode {
     const PING_INTERVAL_SECS: u64 = 1;
     const BOOTSTRAP_INTERVAL_SECS: u64 = 2;
 
-    fn routing_table(&self) -> &SyncRoutingTable {
+    fn routing_table(&self) -> &SyncTcpRouter {
         &self.routing_table
     }
 
@@ -117,7 +117,7 @@ impl From<Bytes> for Data {
 #[derive(Clone)]
 pub struct KadNode {
     pub node: Node,
-    pub routing_table: SyncRoutingTable,
+    pub routing_table: SyncTcpRouter,
 
     pub sent_message_counter: Arc<AtomicU64>,
     pub sent_messages: Arc<RwLock<HashMap<u64, Message>>>,
@@ -136,7 +136,7 @@ impl KadNode {
             })
             .await
             .unwrap(),
-            routing_table: SyncRoutingTable::new(id, 10, 10),
+            routing_table: SyncTcpRouter::new(id, 10, 10),
 
             sent_message_counter: Arc::new(AtomicU64::new(0)),
             sent_messages: Arc::new(RwLock::new(HashMap::new())),
