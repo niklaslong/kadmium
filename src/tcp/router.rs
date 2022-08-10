@@ -7,7 +7,7 @@ use std::{
 use rand::{seq::IteratorRandom, thread_rng, Fill};
 use time::OffsetDateTime;
 
-use crate::{
+use crate::core::{
     id::Id,
     message::{Chunk, FindKNodes, KNodes, Message, Ping, Pong, Response},
     traits::ProcessData,

@@ -8,10 +8,10 @@ use std::{
 
 use time::OffsetDateTime;
 
-use crate::{
-    core::RoutingTable,
+use crate::core::{
     id::Id,
     message::{Message, Response},
+    routing_table::RoutingTable,
     traits::ProcessData,
 };
 

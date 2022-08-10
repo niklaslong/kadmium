@@ -6,7 +6,7 @@ use std::net::SocketAddr;
 use bincode::{Decode, Encode};
 use bytes::Bytes;
 
-use crate::id::Id;
+use crate::core::id::Id;
 
 pub type Nonce = u128;
 type Height = u32;

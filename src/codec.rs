@@ -5,7 +5,7 @@ use std::io;
 use bytes::{Bytes, BytesMut};
 use tokio_util::codec::{Decoder, Encoder, LengthDelimitedCodec};
 
-use crate::message::Message;
+use crate::core::message::Message;
 
 /// Backed by Bincode and Tokio's [`LengthDelimitedCodec`], this codec implements the [`Encoder`] and
 /// [`Decoder`] traits for [`Message`].
@@ -64,7 +64,7 @@ mod tests {
 
     use super::*;
     use crate::{
-        id::Id,
+        core::id::Id,
         message::{Chunk, FindKNodes, KNodes, Ping, Pong},
     };
 

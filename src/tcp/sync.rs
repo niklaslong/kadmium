@@ -5,10 +5,12 @@ use rand::{thread_rng, Rng};
 use time::OffsetDateTime;
 
 use crate::{
-    id::Id,
-    message::{FindKNodes, Message, Nonce, Ping, Response},
+    core::{
+        id::Id,
+        message::{FindKNodes, Message, Nonce, Ping, Response},
+        traits::ProcessData,
+    },
     tcp::{ConnState, RoutingTable},
-    traits::ProcessData,
 };
 
 /// A routing table implementation suitable for use in async contexts.

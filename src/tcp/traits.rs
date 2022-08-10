@@ -7,8 +7,8 @@ use rand::{seq::SliceRandom, thread_rng, Rng};
 
 #[cfg(feature = "sync")]
 use crate::{
-    id::Id,
-    message::{Chunk, Message, Nonce},
+    core::id::Id,
+    core::message::{Chunk, Message, Nonce},
     tcp::SyncRoutingTable,
 };
 
