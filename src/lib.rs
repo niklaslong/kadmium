@@ -28,6 +28,7 @@ pub mod message;
 pub mod quic;
 pub mod tcp;
 
+mod core;
 mod id;
 mod traits;
 
