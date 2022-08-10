@@ -10,6 +10,7 @@ use time::OffsetDateTime;
 use crate::core::{
     id::Id,
     message::{Chunk, FindKNodes, KNodes, Message, Ping, Pong, Response},
+    routing_table::RoutingTable,
     traits::ProcessData,
 };
 
@@ -43,64 +44,66 @@ impl TcpMeta {
     }
 }
 
-/// The core routing table implementation.
+type ConnAddr = SocketAddr;
+
+/// The core router implementation.
 #[derive(Debug, Clone)]
-pub struct RoutingTable {
-    // The node's local identifier.
-    local_id: Id,
-    // The maximum number of identifiers that can be contained in a bucket.
-    max_bucket_size: u8,
-    // The number of addresses to share when responding to a FIND_K_NODES query.
-    k: u8,
-    // The buckets constructed for broadcast purposes (only contains connected identifiers).
-    buckets: HashMap<u32, HashSet<Id>>,
-    // Maps identifiers to peer meta data (connected and disconnected).
-    pub(crate) peer_list: HashMap<Id, TcpMeta>,
-    // Maps peer addresses to peer identifiers (connected only).
-    id_list: HashMap<SocketAddr, Id>,
+pub struct TcpRouter {
+    /// The routing table backing this router.
+    rt: RoutingTable<ConnAddr, TcpMeta>,
 }
 
-impl Default for RoutingTable {
+impl Default for TcpRouter {
     fn default() -> Self {
         let mut rng = thread_rng();
         let mut bytes = [0u8; Id::BYTES];
         debug_assert!(bytes.try_fill(&mut rng).is_ok());
 
         Self {
-            local_id: Id::new(bytes),
-            max_bucket_size: 20,
-            k: 20,
-            buckets: HashMap::new(),
-            peer_list: HashMap::new(),
-            id_list: HashMap::new(),
+            rt: RoutingTable {
+                local_id: Id::new(bytes),
+                max_bucket_size: 20,
+                k: 20,
+                buckets: HashMap::new(),
+                peer_list: HashMap::new(),
+                id_list: HashMap::new(),
+            },
         }
     }
 }
 
-impl RoutingTable {
+impl TcpRouter {
     /// Creates a new routing table.
     pub fn new(local_id: Id, max_bucket_size: u8, k: u8) -> Self {
         Self {
-            local_id,
-            max_bucket_size,
-            k,
-            ..Default::default()
+            rt: RoutingTable {
+                local_id,
+                max_bucket_size,
+                k,
+                buckets: HashMap::new(),
+                peer_list: HashMap::new(),
+                id_list: HashMap::new(),
+            },
         }
+    }
+
+    pub(crate) fn routing_table(&self) -> &RoutingTable<ConnAddr, TcpMeta> {
+        &self.rt
     }
 
     /// Returns this router's local identifier.
     pub fn local_id(&self) -> Id {
-        self.local_id
+        self.rt.local_id
     }
 
     /// Returns the identifier corresponding to the address, if it exists.
     pub fn peer_id(&self, addr: SocketAddr) -> Option<Id> {
-        self.id_list.get(&addr).copied()
+        self.rt.id_list.get(&addr).copied()
     }
 
     /// Returns the peer's metadata if it exists.
     pub fn peer_meta(&self, id: &Id) -> Option<&TcpMeta> {
-        self.peer_list.get(id)
+        self.rt.peer_list.get(id)
     }
 
     /// Returns `true` if the record exists already or was inserted, `false` if an attempt was made to
@@ -124,18 +127,19 @@ impl RoutingTable {
         // connecton state. The node wrapping this implementation should make sure to call
         // `set_disconnected` if a connection is closed or dropped.
 
-        if id == self.local_id {
+        if id == self.rt.local_id {
             return false;
         }
 
-        self.peer_list
+        self.rt
+            .peer_list
             .entry(id)
             .and_modify(|meta| {
                 meta.listening_addr = listening_addr;
             })
             .or_insert_with(|| TcpMeta::new(listening_addr, None, ConnState::Disconnected, None));
 
-        self.id_list.insert(listening_addr, id);
+        self.rt.id_list.insert(listening_addr, id);
 
         true
     }
@@ -150,8 +154,8 @@ impl RoutingTable {
 
         // TODO: check if identifier is already in use?
 
-        let bucket = self.buckets.entry(i).or_insert_with(HashSet::new);
-        match bucket.len().cmp(&self.max_bucket_size.into()) {
+        let bucket = self.rt.buckets.entry(i).or_insert_with(HashSet::new);
+        match bucket.len().cmp(&self.rt.max_bucket_size.into()) {
             Ordering::Less => {
                 // Bucket still has space. Signal the value could be inserted into the bucket (once
                 // the connection is succesful).
@@ -174,14 +178,14 @@ impl RoutingTable {
         match self.can_connect(id) {
             (true, Some(i)) => {
                 if let (Some(peer_meta), Some(bucket)) =
-                    (self.peer_list.get_mut(&id), self.buckets.get_mut(&i))
+                    (self.rt.peer_list.get_mut(&id), self.rt.buckets.get_mut(&i))
                 {
                     // If the bucket insert returns `false`, it means the id is already in the bucket and the
                     // peer is connected.
                     let _res = bucket.insert(id);
                     debug_assert!(_res);
 
-                    self.id_list.insert(conn_addr, id);
+                    self.rt.id_list.insert(conn_addr, id);
                     peer_meta.conn_addr = Some(conn_addr);
                     peer_meta.conn_state = ConnState::Connected;
                     peer_meta.last_seen = Some(OffsetDateTime::now_utc());
@@ -208,7 +212,7 @@ impl RoutingTable {
             .expect("self can't have an identifier in the peer list");
 
         if let (Some(peer_meta), Some(bucket)) =
-            (self.peer_list.get_mut(&id), self.buckets.get_mut(&i))
+            (self.rt.peer_list.get_mut(&id), self.rt.buckets.get_mut(&i))
         {
             let bucket_res = bucket.remove(&id);
             debug_assert!(bucket_res);
@@ -217,6 +221,7 @@ impl RoutingTable {
             // peer reconnects later (also this means we only have one collection tracking
             // disconnected peers for simplicity).
             let id_list_res = self
+                .rt
                 .id_list
                 .remove(&peer_meta.conn_addr.expect("conn_addr must be present"));
             debug_assert!(id_list_res.is_some());
@@ -242,11 +247,11 @@ impl RoutingTable {
 
         let mut selected_peers = vec![];
         for h in 0..height {
-            if let Some(bucket) = self.buckets.get(&h) {
+            if let Some(bucket) = self.rt.buckets.get(&h) {
                 // Choose one peer at random per bucket.
                 if let Some(id) = bucket.iter().choose(&mut rng) {
                     // The value should exist as the peer is in the bucket.
-                    let peer_meta = self.peer_list.get(id);
+                    let peer_meta = self.rt.peer_list.get(id);
                     debug_assert!(peer_meta.is_some());
                     debug_assert_eq!(peer_meta.unwrap().conn_state, ConnState::Connected);
                     // Return the connection address, not the listening address as we need to
@@ -269,6 +274,7 @@ impl RoutingTable {
         // sort as we don't care if items at the same distance are reordered (and it is usually
         // faster).
         let mut ids: Vec<_> = self
+            .rt
             .peer_list
             .iter()
             .map(|(&candidate_id, &candidate_meta)| (candidate_id, candidate_meta.listening_addr))
@@ -296,7 +302,7 @@ impl RoutingTable {
         };
 
         // Update the peer's last seen timestamp.
-        if let Some(peer_meta) = self.peer_list.get_mut(&id) {
+        if let Some(peer_meta) = self.rt.peer_list.get_mut(&id) {
             peer_meta.last_seen = Some(OffsetDateTime::now_utc())
         }
 
@@ -347,7 +353,7 @@ impl RoutingTable {
     }
 
     fn process_find_k_nodes(&self, find_k_nodes: FindKNodes) -> KNodes {
-        let k_closest_nodes = self.find_k_closest(&find_k_nodes.id, self.k as usize);
+        let k_closest_nodes = self.find_k_closest(&find_k_nodes.id, self.rt.k as usize);
 
         KNodes {
             nonce: find_k_nodes.nonce,
@@ -415,13 +421,13 @@ mod tests {
 
     #[test]
     fn peer_id_not_present() {
-        let rt = RoutingTable::new(Id::from_u16(0), 1, 20);
+        let rt = TcpRouter::new(Id::from_u16(0), 1, 20);
         assert!(rt.peer_id(localhost_with_port(0)).is_none());
     }
 
     #[test]
     fn peer_id_is_present() {
-        let mut rt = RoutingTable::new(Id::from_u16(0), 1, 20);
+        let mut rt = TcpRouter::new(Id::from_u16(0), 1, 20);
 
         let id = Id::from_u16(1);
         let addr = localhost_with_port(1);
@@ -432,7 +438,7 @@ mod tests {
 
     #[test]
     fn insert() {
-        let mut rt = RoutingTable::new(Id::from_u16(0), 1, 20);
+        let mut rt = TcpRouter::new(Id::from_u16(0), 1, 20);
         // ... 0001 -> bucket i = 0
         assert!(rt.insert(Id::from_u16(1), localhost_with_port(1)));
         // ... 0010 -> bucket i = 1
@@ -443,7 +449,7 @@ mod tests {
 
     #[test]
     fn insert_defaults() {
-        let mut rt = RoutingTable::new(Id::from_u16(0), 1, 20);
+        let mut rt = TcpRouter::new(Id::from_u16(0), 1, 20);
 
         let id = Id::from_u16(1);
         let addr = localhost_with_port(1);
@@ -459,14 +465,14 @@ mod tests {
 
     #[test]
     fn insert_self() {
-        let mut rt = RoutingTable::new(Id::from_u16(0), 1, 20);
+        let mut rt = TcpRouter::new(Id::from_u16(0), 1, 20);
         // Attempt to insert our local id.
-        assert!(!rt.insert(rt.local_id, localhost_with_port(0)));
+        assert!(!rt.insert(rt.local_id(), localhost_with_port(0)));
     }
 
     #[test]
     fn insert_duplicate() {
-        let mut rt = RoutingTable::new(Id::from_u16(0), 1, 20);
+        let mut rt = TcpRouter::new(Id::from_u16(0), 1, 20);
         // The double insert will still return true.
         assert!(rt.insert(Id::from_u16(1), localhost_with_port(1)));
         assert!(rt.insert(Id::from_u16(1), localhost_with_port(1)));
@@ -474,7 +480,7 @@ mod tests {
 
     #[test]
     fn insert_duplicate_updates_listening_addr() {
-        let mut rt = RoutingTable::new(Id::from_u16(0), 1, 20);
+        let mut rt = TcpRouter::new(Id::from_u16(0), 1, 20);
 
         let id = Id::from_u16(1);
         let addr = localhost_with_port(1);
@@ -492,7 +498,7 @@ mod tests {
     #[test]
     fn set_connected() {
         // Set the max bucket size to a low value so we can easily test when it's full.
-        let mut rt = RoutingTable::new(Id::from_u16(0), 1, 20);
+        let mut rt = TcpRouter::new(Id::from_u16(0), 1, 20);
 
         // ... 0001 -> bucket i = 0
         let addr = localhost_with_port(1);
@@ -515,13 +521,13 @@ mod tests {
 
     #[test]
     fn set_connected_self() {
-        let mut rt = RoutingTable::new(Id::from_u16(0), 1, 20);
+        let mut rt = TcpRouter::new(Id::from_u16(0), 1, 20);
         assert!(!rt.set_connected(rt.local_id(), localhost_with_port(0)));
     }
 
     #[test]
     fn set_disconnected() {
-        let mut rt = RoutingTable::new(Id::from_u16(0), 1, 20);
+        let mut rt = TcpRouter::new(Id::from_u16(0), 1, 20);
         let id = Id::from_u16(1);
         let addr = localhost_with_port(1);
         assert!(rt.insert(id, addr));
@@ -531,13 +537,13 @@ mod tests {
 
     #[test]
     fn set_disconnected_non_existant() {
-        let mut rt = RoutingTable::new(Id::from_u16(0), 1, 20);
+        let mut rt = TcpRouter::new(Id::from_u16(0), 1, 20);
         assert!(!rt.set_disconnected(localhost_with_port(0)));
     }
 
     #[test]
     fn find_k_closest() {
-        let mut rt = RoutingTable::new(Id::from_u16(0), 5, 20);
+        let mut rt = TcpRouter::new(Id::from_u16(0), 5, 20);
 
         // Generate 5 identifiers and addressses.
         let peers: Vec<(Id, SocketAddr)> = (1..=5)
@@ -551,7 +557,7 @@ mod tests {
         }
 
         let k = 3;
-        let k_closest = rt.find_k_closest(&rt.local_id, k);
+        let k_closest = rt.find_k_closest(&rt.local_id(), k);
 
         assert_eq!(k_closest.len(), 3);
         assert!(k_closest.contains(&peers[0]));
@@ -561,15 +567,15 @@ mod tests {
 
     #[test]
     fn find_k_closest_empty() {
-        let rt = RoutingTable::new(Id::from_u16(0), 5, 20);
+        let rt = TcpRouter::new(Id::from_u16(0), 5, 20);
         let k = 3;
-        let k_closest = rt.find_k_closest(&rt.local_id, k);
+        let k_closest = rt.find_k_closest(&rt.local_id(), k);
         assert_eq!(k_closest.len(), 0);
     }
 
     #[test]
     fn select_broadcast_peers() {
-        let mut rt = RoutingTable::new(Id::from_u16(0), 5, 20);
+        let mut rt = TcpRouter::new(Id::from_u16(0), 5, 20);
 
         // Generate 5 identifiers and addressses.
         let peers: Vec<(Id, SocketAddr)> = (1..=5)

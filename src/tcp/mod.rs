@@ -7,7 +7,7 @@ mod sync;
 mod traits;
 
 pub(crate) use router::ConnState;
-pub use router::RoutingTable;
+pub use router::TcpRouter;
 #[cfg(feature = "sync")]
 pub use sync::SyncRoutingTable;
 #[cfg(feature = "sync")]

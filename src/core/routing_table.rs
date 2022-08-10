@@ -3,6 +3,7 @@ use std::collections::{HashMap, HashSet};
 use crate::core::id::Id;
 
 /// The core routing table data structure.
+#[derive(Debug, Clone)]
 pub(crate) struct RoutingTable<T, U> {
     // The node's local identifier.
     pub(crate) local_id: Id,

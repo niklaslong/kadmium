@@ -10,45 +10,45 @@ use crate::{
         message::{FindKNodes, Message, Nonce, Ping, Response},
         traits::ProcessData,
     },
-    tcp::{ConnState, RoutingTable},
+    tcp::{ConnState, TcpRouter},
 };
 
 /// A routing table implementation suitable for use in async contexts.
 ///
-/// It wraps [`RoutingTable`] and adds [`Nonce`] checking for request/response pairs.
+/// It wraps [`TcpRouter`] and adds [`Nonce`] checking for request/response pairs.
 #[cfg_attr(doc_cfg, doc(cfg(feature = "sync")))]
 #[derive(Debug, Default, Clone)]
 pub struct SyncRoutingTable {
-    routing_table: Arc<RwLock<RoutingTable>>,
+    router: Arc<RwLock<TcpRouter>>,
     sent_nonces: Arc<RwLock<HashMap<Nonce, OffsetDateTime>>>,
 }
 
 impl SyncRoutingTable {
     pub fn new(local_id: Id, max_bucket_size: u8, k: u8) -> Self {
         Self {
-            routing_table: Arc::new(RwLock::new(RoutingTable::new(local_id, max_bucket_size, k))),
+            router: Arc::new(RwLock::new(TcpRouter::new(local_id, max_bucket_size, k))),
             ..Default::default()
         }
     }
 
     pub fn local_id(&self) -> Id {
-        self.routing_table.read().local_id()
+        self.router.read().local_id()
     }
 
     pub fn insert(&self, id: Id, listening_addr: SocketAddr) -> bool {
-        self.routing_table.write().insert(id, listening_addr)
+        self.router.write().insert(id, listening_addr)
     }
 
     pub fn set_connected(&self, id: Id, conn_addr: SocketAddr) -> bool {
-        self.routing_table.write().set_connected(id, conn_addr)
+        self.router.write().set_connected(id, conn_addr)
     }
 
     pub fn set_disconnected(&self, conn_addr: SocketAddr) -> bool {
-        self.routing_table.write().set_disconnected(conn_addr)
+        self.router.write().set_disconnected(conn_addr)
     }
 
     pub fn is_connected(&self, addr: SocketAddr) -> bool {
-        let rt_g = self.routing_table.read();
+        let rt_g = self.router.read();
         if let Some(id) = rt_g.peer_id(addr) {
             if let Some(peer_meta) = rt_g.peer_meta(&id) {
                 return matches!(peer_meta.conn_state, ConnState::Connected);
@@ -59,8 +59,9 @@ impl SyncRoutingTable {
     }
 
     pub fn disconnected_addrs(&self) -> Vec<SocketAddr> {
-        self.routing_table
+        self.router
             .read()
+            .routing_table()
             .peer_list
             .iter()
             .filter(|(_, &peer_meta)| matches!(peer_meta.conn_state, ConnState::Disconnected))
@@ -69,8 +70,9 @@ impl SyncRoutingTable {
     }
 
     pub fn connected_addrs(&self) -> Vec<SocketAddr> {
-        self.routing_table
+        self.router
             .read()
+            .routing_table()
             .peer_list
             .iter()
             .filter(|(_, &peer_meta)| matches!(peer_meta.conn_state, ConnState::Connected))
@@ -80,8 +82,9 @@ impl SyncRoutingTable {
 
     pub fn select_search_peers(&self, alpha: usize) -> Vec<(Id, SocketAddr, bool)> {
         let mut ids: Vec<_> = self
-            .routing_table
+            .router
             .read()
+            .routing_table()
             .peer_list
             .iter()
             .map(|(&candidate_id, &candidate_meta)| {
@@ -99,7 +102,7 @@ impl SyncRoutingTable {
             .collect();
 
         ids.sort_unstable_by_key(|(candidate_id, _, _)| {
-            candidate_id.log2_distance(&self.routing_table.read().local_id())
+            candidate_id.log2_distance(&self.router.read().local_id())
         });
         ids.truncate(alpha);
 
@@ -107,7 +110,7 @@ impl SyncRoutingTable {
     }
 
     pub fn select_broadcast_peers(&self, height: u32) -> Option<Vec<(u32, SocketAddr)>> {
-        self.routing_table.read().select_broadcast_peers(height)
+        self.router.read().select_broadcast_peers(height)
     }
 
     pub fn generate_ping(&self) -> Ping {
@@ -120,7 +123,7 @@ impl SyncRoutingTable {
 
         Ping {
             nonce,
-            id: self.routing_table.read().local_id(),
+            id: self.router.read().local_id(),
         }
     }
 
@@ -137,7 +140,7 @@ impl SyncRoutingTable {
             // TODO: the local id should be used when bootstrapping but later it should choose a
             // id at random in a bucket that hasn't seen much activity lately. In practice we could
             // just shoot one out periodcially for each populated bucket.
-            id: self.routing_table.read().local_id(),
+            id: self.router.read().local_id(),
         }
     }
 
@@ -151,7 +154,7 @@ impl SyncRoutingTable {
             // TODO: record latency, should there be a separation with PING/PONG?
         }
 
-        self.routing_table
+        self.router
             .write()
             .process_message::<S, T>(state, message, source)
     }
