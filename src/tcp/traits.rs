@@ -164,6 +164,8 @@ where
         });
     }
 
+    // TODO: work out how and if data should be chunked (1 block per-message or multiple smaller
+    // messages). Up to the caller for now.
     /// Broadcast data to the network, following the kadcast protocol.
     async fn kadcast(&self, data: Bytes) -> Nonce {
         let peers = self

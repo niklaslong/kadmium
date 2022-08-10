@@ -132,6 +132,9 @@ impl SyncRoutingTable {
 
         FindKNodes {
             nonce,
+            // TODO: the local id should be used when bootstrapping but later it should choose a
+            // id at random in a bucket that hasn't seen much activity lately. In practice we could
+            // just shoot one out periodcially for each populated bucket.
             id: self.routing_table.read().local_id(),
         }
     }
