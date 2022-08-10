@@ -1,7 +1,7 @@
 //! A broadcast protocol implementation based on [Kadcast](https://eprint.iacr.org/2021/996.pdf).
 //!
-//! This crate features multiple routing table implementations but can broadly be categorised by
-//! the transport protocol they are optimised for. This library supports TCP and QUIC.
+//! This crate features multiple router implementations that can broadly be categorised by the
+//! transport protocol they are optimised for. This library supports TCP and QUIC.
 //!
 //! ## TCP
 //!

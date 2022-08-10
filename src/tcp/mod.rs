@@ -1,4 +1,4 @@
-//! Core routing table implementation fine-tuned for TCP.
+//! Core router implementations fine-tuned for TCP.
 
 mod router;
 #[cfg(feature = "sync")]

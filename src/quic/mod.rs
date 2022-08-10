@@ -1,4 +1,4 @@
-//! Core routing table implementation fine-tuned for QUIC.
+//! Core router implementations fine-tuned for QUIC.
 
 use std::{
     cmp::Ordering,
@@ -55,8 +55,9 @@ impl QuicMeta {
     }
 }
 
-/// The core routing table implementation.
+/// The core router implementation.
 pub struct QuicRouter {
+    /// The routing table backing this router.
     rt: RoutingTable<ConnId, QuicMeta>,
 }
 

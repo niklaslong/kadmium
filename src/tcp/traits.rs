@@ -31,8 +31,8 @@ where
     /// The interval between periodic requests for peers while above the minimum number of peers.
     const DISCOVERY_INTERVAL_SECS: u64 = 60;
 
-    /// Returns a clonable reference to the routing table.
-    fn routing_table(&self) -> &SyncTcpRouter;
+    /// Returns a clonable reference to the router.
+    fn router(&self) -> &SyncTcpRouter;
 
     /// Returns `true` if the address is connected, `false` if it isn't.
     async fn is_connected(&self, addr: SocketAddr) -> bool;
@@ -57,12 +57,9 @@ where
 
         tokio::spawn(async move {
             loop {
-                for addr in self_clone.routing_table().connected_addrs() {
+                for addr in self_clone.router().connected_addrs() {
                     self_clone
-                        .unicast(
-                            addr,
-                            Message::Ping(self_clone.routing_table().generate_ping()),
-                        )
+                        .unicast(addr, Message::Ping(self_clone.router().generate_ping()))
                         .await
                 }
 
@@ -89,9 +86,8 @@ where
 
         tokio::spawn(async move {
             loop {
-                for (_id, addr, is_connected) in self_clone
-                    .routing_table()
-                    .select_search_peers(Self::ALPHA.into())
+                for (_id, addr, is_connected) in
+                    self_clone.router().select_search_peers(Self::ALPHA.into())
                 {
                     let is_connected = match is_connected {
                         true => self_clone.is_connected(addr).await,
@@ -102,23 +98,21 @@ where
                         self_clone
                             .unicast(
                                 addr,
-                                Message::FindKNodes(
-                                    self_clone.routing_table().generate_find_k_nodes(),
-                                ),
+                                Message::FindKNodes(self_clone.router().generate_find_k_nodes()),
                             )
                             .await;
                     }
                 }
 
-                let peer_deficit = Self::PEER_TARGET as i128
-                    - self_clone.routing_table().connected_addrs().len() as i128;
+                let peer_deficit =
+                    Self::PEER_TARGET as i128 - self_clone.router().connected_addrs().len() as i128;
 
                 if peer_deficit < 0 {
                     let addrs: Vec<SocketAddr> = {
                         let mut rng = rand::thread_rng();
 
                         self_clone
-                            .routing_table()
+                            .router()
                             .connected_addrs()
                             .choose_multiple(&mut rng, peer_deficit.unsigned_abs() as usize)
                             .copied()
@@ -134,7 +128,7 @@ where
                     let addrs: Vec<SocketAddr> = {
                         let mut rng = rand::thread_rng();
                         self_clone
-                            .routing_table()
+                            .router()
                             .disconnected_addrs()
                             .choose_multiple(&mut rng, peer_deficit as usize)
                             .copied()
@@ -149,9 +143,7 @@ where
                 // Check the peer counts again.
                 let sleep_duration = {
                     std::time::Duration::from_secs(
-                        if self_clone.routing_table().connected_addrs().len()
-                            < Self::PEER_TARGET.into()
-                        {
+                        if self_clone.router().connected_addrs().len() < Self::PEER_TARGET.into() {
                             Self::BOOTSTRAP_INTERVAL_SECS
                         } else {
                             Self::DISCOVERY_INTERVAL_SECS
@@ -169,7 +161,7 @@ where
     /// Broadcast data to the network, following the kadcast protocol.
     async fn kadcast(&self, data: Bytes) -> Nonce {
         let peers = self
-            .routing_table()
+            .router()
             .select_broadcast_peers(Id::BITS as u32)
             .unwrap();
 

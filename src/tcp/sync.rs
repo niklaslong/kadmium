@@ -13,7 +13,7 @@ use crate::{
     tcp::{ConnState, TcpRouter},
 };
 
-/// A routing table implementation suitable for use in async contexts.
+/// A router implementation suitable for use in async contexts.
 ///
 /// It wraps [`TcpRouter`] and adds [`Nonce`] checking for request/response pairs.
 #[cfg_attr(doc_cfg, doc(cfg(feature = "sync")))]

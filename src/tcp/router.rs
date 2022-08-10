@@ -73,7 +73,7 @@ impl Default for TcpRouter {
 }
 
 impl TcpRouter {
-    /// Creates a new routing table.
+    /// Creates a new router.
     pub fn new(local_id: Id, max_bucket_size: u8, k: u8) -> Self {
         Self {
             rt: RoutingTable {
@@ -172,7 +172,7 @@ impl TcpRouter {
         }
     }
 
-    /// Sets the peer as connected on the routing table, returning `false` if there is no room to
+    /// Sets the peer as connected on the router, returning `false` if there is no room to
     /// connect the peer.
     pub fn set_connected(&mut self, id: Id, conn_addr: SocketAddr) -> bool {
         match self.can_connect(id) {
@@ -421,42 +421,42 @@ mod tests {
 
     #[test]
     fn peer_id_not_present() {
-        let rt = TcpRouter::new(Id::from_u16(0), 1, 20);
-        assert!(rt.peer_id(localhost_with_port(0)).is_none());
+        let router = TcpRouter::new(Id::from_u16(0), 1, 20);
+        assert!(router.peer_id(localhost_with_port(0)).is_none());
     }
 
     #[test]
     fn peer_id_is_present() {
-        let mut rt = TcpRouter::new(Id::from_u16(0), 1, 20);
+        let mut router = TcpRouter::new(Id::from_u16(0), 1, 20);
 
         let id = Id::from_u16(1);
         let addr = localhost_with_port(1);
 
-        assert!(rt.insert(id, addr));
-        assert_eq!(rt.peer_id(addr), Some(id));
+        assert!(router.insert(id, addr));
+        assert_eq!(router.peer_id(addr), Some(id));
     }
 
     #[test]
     fn insert() {
-        let mut rt = TcpRouter::new(Id::from_u16(0), 1, 20);
+        let mut router = TcpRouter::new(Id::from_u16(0), 1, 20);
         // ... 0001 -> bucket i = 0
-        assert!(rt.insert(Id::from_u16(1), localhost_with_port(1)));
+        assert!(router.insert(Id::from_u16(1), localhost_with_port(1)));
         // ... 0010 -> bucket i = 1
-        assert!(rt.insert(Id::from_u16(2), localhost_with_port(2)));
+        assert!(router.insert(Id::from_u16(2), localhost_with_port(2)));
         // ... 0011 -> bucket i = 1
-        assert!(rt.insert(Id::from_u16(3), localhost_with_port(3)));
+        assert!(router.insert(Id::from_u16(3), localhost_with_port(3)));
     }
 
     #[test]
     fn insert_defaults() {
-        let mut rt = TcpRouter::new(Id::from_u16(0), 1, 20);
+        let mut router = TcpRouter::new(Id::from_u16(0), 1, 20);
 
         let id = Id::from_u16(1);
         let addr = localhost_with_port(1);
 
-        assert!(rt.insert(id, addr));
+        assert!(router.insert(id, addr));
 
-        let meta = rt.peer_meta(&id).unwrap();
+        let meta = router.peer_meta(&id).unwrap();
         assert_eq!(meta.listening_addr, addr);
         assert_eq!(meta.conn_addr, None);
         assert_eq!(meta.conn_state, ConnState::Disconnected);
@@ -465,85 +465,85 @@ mod tests {
 
     #[test]
     fn insert_self() {
-        let mut rt = TcpRouter::new(Id::from_u16(0), 1, 20);
+        let mut router = TcpRouter::new(Id::from_u16(0), 1, 20);
         // Attempt to insert our local id.
-        assert!(!rt.insert(rt.local_id(), localhost_with_port(0)));
+        assert!(!router.insert(router.local_id(), localhost_with_port(0)));
     }
 
     #[test]
     fn insert_duplicate() {
-        let mut rt = TcpRouter::new(Id::from_u16(0), 1, 20);
+        let mut router = TcpRouter::new(Id::from_u16(0), 1, 20);
         // The double insert will still return true.
-        assert!(rt.insert(Id::from_u16(1), localhost_with_port(1)));
-        assert!(rt.insert(Id::from_u16(1), localhost_with_port(1)));
+        assert!(router.insert(Id::from_u16(1), localhost_with_port(1)));
+        assert!(router.insert(Id::from_u16(1), localhost_with_port(1)));
     }
 
     #[test]
     fn insert_duplicate_updates_listening_addr() {
-        let mut rt = TcpRouter::new(Id::from_u16(0), 1, 20);
+        let mut router = TcpRouter::new(Id::from_u16(0), 1, 20);
 
         let id = Id::from_u16(1);
         let addr = localhost_with_port(1);
-        assert!(rt.insert(id, addr));
-        assert_eq!(rt.peer_meta(&id).unwrap().listening_addr, addr);
+        assert!(router.insert(id, addr));
+        assert_eq!(router.peer_meta(&id).unwrap().listening_addr, addr);
 
         // Inserting the same identifier with a different address should result in the new address
         // getting stored.
         let id = Id::from_u16(1);
         let addr = localhost_with_port(2);
-        assert!(rt.insert(id, addr));
-        assert_eq!(rt.peer_meta(&id).unwrap().listening_addr, addr);
+        assert!(router.insert(id, addr));
+        assert_eq!(router.peer_meta(&id).unwrap().listening_addr, addr);
     }
 
     #[test]
     fn set_connected() {
         // Set the max bucket size to a low value so we can easily test when it's full.
-        let mut rt = TcpRouter::new(Id::from_u16(0), 1, 20);
+        let mut router = TcpRouter::new(Id::from_u16(0), 1, 20);
 
         // ... 0001 -> bucket i = 0
         let addr = localhost_with_port(1);
         let id = Id::from_u16(1);
-        rt.insert(id, addr);
-        assert!(rt.set_connected(id, addr));
+        router.insert(id, addr);
+        assert!(router.set_connected(id, addr));
 
         // ... 0010 -> bucket i = 1
         let addr = localhost_with_port(2);
         let id = Id::from_u16(2);
-        rt.insert(id, addr);
-        assert!(rt.set_connected(id, addr));
+        router.insert(id, addr);
+        assert!(router.set_connected(id, addr));
 
         // ... 0011 -> bucket i = 1
         let addr = localhost_with_port(3);
         let id = Id::from_u16(3);
-        rt.insert(id, addr);
-        assert!(!rt.set_connected(id, addr));
+        router.insert(id, addr);
+        assert!(!router.set_connected(id, addr));
     }
 
     #[test]
     fn set_connected_self() {
-        let mut rt = TcpRouter::new(Id::from_u16(0), 1, 20);
-        assert!(!rt.set_connected(rt.local_id(), localhost_with_port(0)));
+        let mut router = TcpRouter::new(Id::from_u16(0), 1, 20);
+        assert!(!router.set_connected(router.local_id(), localhost_with_port(0)));
     }
 
     #[test]
     fn set_disconnected() {
-        let mut rt = TcpRouter::new(Id::from_u16(0), 1, 20);
+        let mut router = TcpRouter::new(Id::from_u16(0), 1, 20);
         let id = Id::from_u16(1);
         let addr = localhost_with_port(1);
-        assert!(rt.insert(id, addr));
-        assert!(rt.set_connected(id, addr));
-        assert!(rt.set_disconnected(addr));
+        assert!(router.insert(id, addr));
+        assert!(router.set_connected(id, addr));
+        assert!(router.set_disconnected(addr));
     }
 
     #[test]
     fn set_disconnected_non_existant() {
-        let mut rt = TcpRouter::new(Id::from_u16(0), 1, 20);
-        assert!(!rt.set_disconnected(localhost_with_port(0)));
+        let mut router = TcpRouter::new(Id::from_u16(0), 1, 20);
+        assert!(!router.set_disconnected(localhost_with_port(0)));
     }
 
     #[test]
     fn find_k_closest() {
-        let mut rt = TcpRouter::new(Id::from_u16(0), 5, 20);
+        let mut router = TcpRouter::new(Id::from_u16(0), 5, 20);
 
         // Generate 5 identifiers and addressses.
         let peers: Vec<(Id, SocketAddr)> = (1..=5)
@@ -552,12 +552,12 @@ mod tests {
             .collect();
 
         for peer in &peers {
-            assert!(rt.insert(peer.0, peer.1));
-            assert!(rt.set_connected(peer.0, peer.1));
+            assert!(router.insert(peer.0, peer.1));
+            assert!(router.set_connected(peer.0, peer.1));
         }
 
         let k = 3;
-        let k_closest = rt.find_k_closest(&rt.local_id(), k);
+        let k_closest = router.find_k_closest(&router.local_id(), k);
 
         assert_eq!(k_closest.len(), 3);
         assert!(k_closest.contains(&peers[0]));
@@ -567,15 +567,15 @@ mod tests {
 
     #[test]
     fn find_k_closest_empty() {
-        let rt = TcpRouter::new(Id::from_u16(0), 5, 20);
+        let router = TcpRouter::new(Id::from_u16(0), 5, 20);
         let k = 3;
-        let k_closest = rt.find_k_closest(&rt.local_id(), k);
+        let k_closest = router.find_k_closest(&router.local_id(), k);
         assert_eq!(k_closest.len(), 0);
     }
 
     #[test]
     fn select_broadcast_peers() {
-        let mut rt = TcpRouter::new(Id::from_u16(0), 5, 20);
+        let mut router = TcpRouter::new(Id::from_u16(0), 5, 20);
 
         // Generate 5 identifiers and addressses.
         let peers: Vec<(Id, SocketAddr)> = (1..=5)
@@ -585,19 +585,19 @@ mod tests {
 
         for peer in peers {
             // Conn address is listening address (all peers received the connections).
-            assert!(rt.insert(peer.0, peer.1));
-            assert!(rt.set_connected(peer.0, peer.1));
+            assert!(router.insert(peer.0, peer.1));
+            assert!(router.set_connected(peer.0, peer.1));
         }
 
         // Find the random addresses in each bucket.
 
         // If the height is 0, we are the last node in the recursion, don't broadcast.
         let h = 0;
-        assert!(rt.select_broadcast_peers(h).is_none());
+        assert!(router.select_broadcast_peers(h).is_none());
 
         let h = 1;
         // Should be present.
-        let selected_peers = rt.select_broadcast_peers(h).unwrap();
+        let selected_peers = router.select_broadcast_peers(h).unwrap();
         assert_eq!(selected_peers.len(), 1);
         // Height for selected peer should be 0.
         assert_eq!(selected_peers[0].0, 0);
