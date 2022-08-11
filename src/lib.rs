@@ -1,21 +1,9 @@
 //! A broadcast protocol implementation based on [Kadcast](https://eprint.iacr.org/2021/996.pdf).
 //!
 //! This crate features multiple router implementations that can broadly be categorised by the
-//! transport protocol they are optimised for. This library supports TCP and QUIC.
-//!
-//! ## TCP
-//!
-//! Notable differences with the paper:
-//!
-//! 1. The implementation is optimised for TCP (not UDP), thus we assume the connection with active
-//!    peers to be sufficiently reliable over time to avoid duplicating broadcasts.
-//! 2. The buckets store only the current active connections, as opposed to all the connections in
-//!    the original protocol.
-//! 3. TODO: threat model differences and mitigations.
-//!
-//! ## QUIC
-//!
-//! Implements a QUIC-based Kadcast as described in the original paper.
+//! transport protocol they are optimised for. It currently supports
+//! [TCP](https://datatracker.ietf.org/doc/html/rfc793) and
+//! [QUIC](https://datatracker.ietf.org/doc/html/rfc9000).
 
 #![cfg_attr(doc_cfg, feature(doc_cfg))]
 
