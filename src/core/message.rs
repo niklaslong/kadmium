@@ -8,11 +8,16 @@ use bytes::Bytes;
 
 use crate::core::id::Id;
 
+/// A NONCE identifies a query/response pair or a specific broadcast.
 pub type Nonce = u128;
 type Height = u32;
 
+/// Specifies what should be done in response to a message.
 pub enum Response {
+    /// The caller should respond to the sender with the wrapped message.
     Unicast(Message),
+    /// The caller should respond by broadcasting the wrapped message to the specified peer
+    /// addresses.
     Broadcast(Vec<(SocketAddr, Message)>),
 }
 
