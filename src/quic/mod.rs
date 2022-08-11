@@ -18,18 +18,20 @@ use crate::core::{
 type ConnId = usize;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum ConnState {
+pub enum ConnState {
     Connected,
     Disconnected,
 }
 
-enum StreamState {
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum StreamState {
     Closed,
     Uni,
     Bi,
 }
 
-struct QuicMeta {
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct QuicMeta {
     addr: SocketAddr,
     conn_id: Option<ConnId>,
     conn_state: ConnState,
@@ -62,7 +64,28 @@ pub struct QuicRouter {
 }
 
 impl QuicRouter {
-    fn insert(&mut self, id: Id, addr: SocketAddr) -> bool {
+    pub fn new(local_id: Id, max_bucket_size: u8, k: u8) -> Self {
+        Self {
+            rt: RoutingTable {
+                local_id,
+                max_bucket_size,
+                k,
+                buckets: HashMap::new(),
+                peer_list: HashMap::new(),
+                id_list: HashMap::new(),
+            },
+        }
+    }
+
+    pub fn local_id(&self) -> Id {
+        self.rt.local_id
+    }
+
+    pub fn peer_meta(&self, id: &Id) -> Option<QuicMeta> {
+        self.rt.peer_list.get(id).copied()
+    }
+
+    pub fn insert(&mut self, id: Id, addr: SocketAddr) -> bool {
         if id == self.rt.local_id {
             return false;
         }
@@ -73,7 +96,7 @@ impl QuicRouter {
             .and_modify(|meta| {
                 // Only modify the address if we are not currently connected to this peer,
                 // hopefully this is sufficient to guard against malicious peer lists.
-                if matches!(meta.conn_state, ConnState::Connected) {
+                if matches!(meta.conn_state, ConnState::Disconnected) {
                     meta.addr = addr;
                 }
             })
@@ -91,7 +114,7 @@ impl QuicRouter {
     }
 
     // TODO: consider CanConnect enum as return type here.
-    fn can_connect(&mut self, id: Id) -> (bool, Option<u32>) {
+    pub fn can_connect(&mut self, id: Id) -> (bool, Option<u32>) {
         let i = match self.rt.local_id.log2_distance(&id) {
             Some(i) => i,
             None => return (false, None),
@@ -123,7 +146,7 @@ impl QuicRouter {
         }
     }
 
-    fn set_connected(&mut self, id: Id, conn_id: ConnId, stream_state: StreamState) -> bool {
+    pub fn set_connected(&mut self, id: Id, conn_id: ConnId, stream_state: StreamState) -> bool {
         match self.can_connect(id) {
             (true, Some(i)) => {
                 if let (Some(quic_meta), Some(bucket)) =
@@ -146,20 +169,91 @@ impl QuicRouter {
         }
     }
 
-    fn set_disconnected(&mut self, conn_id: ConnId) -> bool {
+    pub fn set_disconnected(&mut self, conn_id: ConnId) -> bool {
         todo!()
     }
 
-    fn select_broadcast_peers(&self, height: u32) -> Option<Vec<(u32, SocketAddr)>> {
+    pub fn select_broadcast_peers(&self, height: u32) -> Option<Vec<(u32, SocketAddr)>> {
         todo!()
     }
 
-    fn process_message<S: Clone, T: ProcessData<S>>(
+    pub fn process_message<S: Clone, T: ProcessData<S>>(
         &mut self,
         state: S,
         message: Message,
         conn_id: ConnId,
     ) -> Option<Response> {
         todo!()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Produces a local address from the supplied port.
+    // TODO: consider testing with random ports and IDs.
+    fn localhost_with_port(port: u16) -> SocketAddr {
+        format!("127.0.0.1:{}", port).parse().unwrap()
+    }
+
+    #[test]
+    fn insert() {
+        let mut router = QuicRouter::new(Id::from_u16(0), 1, 20);
+        // ... 0001 -> bucket i = 0
+        assert!(router.insert(Id::from_u16(1), localhost_with_port(1)));
+        // ... 0010 -> bucket i = 1
+        assert!(router.insert(Id::from_u16(2), localhost_with_port(2)));
+        // ... 0011 -> bucket i = 1
+        assert!(router.insert(Id::from_u16(3), localhost_with_port(3)));
+    }
+
+    #[test]
+    fn insert_defaults() {
+        let mut router = QuicRouter::new(Id::from_u16(0), 1, 20);
+
+        let id = Id::from_u16(1);
+        let addr = localhost_with_port(1);
+
+        assert!(router.insert(id, addr));
+
+        let meta = router.peer_meta(&id).unwrap();
+        assert_eq!(meta.addr, addr);
+        assert_eq!(meta.conn_id, None);
+        assert_eq!(meta.conn_state, ConnState::Disconnected);
+        assert_eq!(meta.stream_state, StreamState::Closed);
+        assert_eq!(meta.last_seen, None);
+    }
+
+    #[test]
+    fn insert_self() {
+        let mut router = QuicRouter::new(Id::from_u16(0), 1, 20);
+        // Attempt to insert our local id.
+        assert!(!router.insert(router.local_id(), localhost_with_port(0)));
+    }
+
+    #[test]
+    fn insert_duplicate() {
+        let mut router = QuicRouter::new(Id::from_u16(0), 1, 20);
+        // The double insert will still return true.
+        assert!(router.insert(Id::from_u16(1), localhost_with_port(1)));
+        assert!(router.insert(Id::from_u16(1), localhost_with_port(1)));
+    }
+
+    #[test]
+    fn insert_duplicate_updates_addr() {
+        let mut router = QuicRouter::new(Id::from_u16(0), 1, 20);
+
+        let id = Id::from_u16(1);
+        let addr = localhost_with_port(1);
+        assert!(router.insert(id, addr));
+        assert_eq!(router.peer_meta(&id).unwrap().addr, addr);
+
+        // Inserting the same identifier with a different address should result in the new address
+        // getting stored (so long as the peer is disconnected).
+        let id = Id::from_u16(1);
+        let addr = localhost_with_port(2);
+        assert!(router.insert(id, addr));
+        assert_eq!(router.peer_meta(&id).unwrap().addr, addr);
     }
 }
