@@ -16,15 +16,23 @@ pub enum Response {
     Broadcast(Vec<(SocketAddr, Message)>),
 }
 
+/// Kadcast message variants.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "codec", derive(Encode, Decode))]
 pub enum Message {
+    /// PING messages requires a PONG response, useful to measure connection latency and peer
+    /// liveness.
     Ping(Ping),
+    /// PONG is the correct response to PING, it must contain the same NONCE.
     Pong(Pong),
 
+    /// FIND_NODE messages query alpha peers for their K closest nodes to an identifier.
     FindKNodes(FindKNodes),
+    /// NODES is the correct response to FIND_NODE, it must contain the same NONCE.
     KNodes(KNodes),
 
+    /// CHUNK is used to broadcast data to the network. It is also the correct response to a
+    /// REQUEST message (TODO).
     Chunk(Chunk),
 }
 
@@ -54,6 +62,7 @@ impl Message {
     }
 }
 
+/// The data making up a PING message.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "codec", derive(Encode, Decode))]
 pub struct Ping {
@@ -62,6 +71,7 @@ pub struct Ping {
     pub id: Id,
 }
 
+/// The data making up a PONG message.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "codec", derive(Encode, Decode))]
 pub struct Pong {
@@ -70,6 +80,7 @@ pub struct Pong {
     pub id: Id,
 }
 
+/// The data making up a FIND_NODE message.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "codec", derive(Encode, Decode))]
 pub struct FindKNodes {
@@ -77,6 +88,7 @@ pub struct FindKNodes {
     pub id: Id,
 }
 
+/// The data making up a NODES message.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "codec", derive(Encode, Decode))]
 pub struct KNodes {
@@ -84,6 +96,7 @@ pub struct KNodes {
     pub nodes: Vec<(Id, SocketAddr)>,
 }
 
+/// The data making up a CHUNK message.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "codec", derive(Encode, Decode))]
 pub struct Chunk {
