@@ -15,7 +15,7 @@ use crate::core::{
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum ConnState {
+pub enum ConnState {
     Connected,
     Disconnected,
 }
@@ -87,6 +87,7 @@ impl TcpRouter {
         }
     }
 
+    #[cfg(feature = "sync")]
     pub(crate) fn routing_table(&self) -> &RoutingTable<ConnAddr, TcpMeta> {
         &self.rt
     }
