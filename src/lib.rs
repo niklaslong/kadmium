@@ -10,10 +10,12 @@
 #[cfg(feature = "codec")]
 #[cfg_attr(doc_cfg, doc(cfg(feature = "codec")))]
 pub mod codec;
-// TODO: feature gate.
-pub mod quic;
 pub mod tcp;
 
 mod core;
+
+// Feature flag compilation for now, since this is WIP.
+#[cfg(feature = "quic")]
+mod quic;
 
 pub use crate::core::{id::Id, message, traits::ProcessData};
