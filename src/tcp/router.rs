@@ -379,7 +379,12 @@ impl TcpRouter {
     ) -> Option<Vec<(SocketAddr, Chunk)>> {
         // Cheap as the backing storage is shared amongst instances.
         let data = chunk.data.clone();
-        let data_as_t: T = chunk.data.into();
+
+        let data_as_t: T = match chunk.data.try_into() {
+            Ok(data) => data,
+            Err(_) => return None,
+        };
+
         let is_kosher = data_as_t.verify_data(state.clone());
 
         // This is where the buckets come in handy. When a node processes a chunk message, it
