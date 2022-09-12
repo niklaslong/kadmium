@@ -25,6 +25,7 @@ pub enum Response {
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "codec", derive(Encode, Decode))]
 pub enum Message {
+    Init(Init),
     /// PING messages requires a PONG response, useful to measure connection latency and peer
     /// liveness.
     Ping(Ping),
@@ -44,6 +45,7 @@ pub enum Message {
 impl Message {
     pub fn variant_as_str(&self) -> &str {
         match self {
+            Message::Init(_) => "init",
             Message::Ping(_) => "ping",
             Message::Pong(_) => "pong",
             Message::FindKNodes(_) => "find_k_nodes",
@@ -54,6 +56,7 @@ impl Message {
 
     pub fn nonce(&self) -> Nonce {
         match self {
+            Message::Init(init) => init.nonce,
             Message::Ping(ping) => ping.nonce,
             Message::Pong(pong) => pong.nonce,
             Message::FindKNodes(find_k_nodes) => find_k_nodes.nonce,
@@ -65,6 +68,14 @@ impl Message {
     pub fn is_response(&self) -> bool {
         matches!(self, Message::Pong(_) | Message::KNodes(_))
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "codec", derive(Encode, Decode))]
+pub struct Init {
+    pub nonce: Nonce,
+    pub id: Id,
+    pub port: u16,
 }
 
 /// The data making up a PING message.

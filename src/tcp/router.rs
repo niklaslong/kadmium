@@ -308,6 +308,7 @@ impl TcpRouter {
         }
 
         match message {
+            Message::Init(_init) => None,
             Message::Ping(ping) => {
                 let pong = self.process_ping(ping);
                 Some(Response::Unicast(Message::Pong(pong)))
