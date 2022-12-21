@@ -25,9 +25,11 @@ async fn connect_two_nodes() {
     // Start two nodes and have them establish a connection.
     let node_a = KadNode::new(id_a).await;
     node_a.enable_handshake().await;
+    node_a.node().start_listening().await.unwrap();
 
     let node_b = KadNode::new(id_b).await;
     node_b.enable_handshake().await;
+    node_b.node().start_listening().await.unwrap();
 
     // The handshake is enacted here, assertions are checked in the handshake protocol
     // implementation.
@@ -53,11 +55,13 @@ async fn ping_pong_two_nodes() {
     node_a.enable_handshake().await;
     node_a.enable_reading().await;
     node_a.enable_writing().await;
+    node_a.node().start_listening().await.unwrap();
 
     let node_b = KadNode::new(id_b).await;
     node_b.enable_handshake().await;
     node_b.enable_reading().await;
     node_b.enable_writing().await;
+    node_b.node().start_listening().await.unwrap();
 
     node_a
         .node()
@@ -103,11 +107,13 @@ async fn k_nodes_two_nodes() {
     node_a.enable_handshake().await;
     node_a.enable_reading().await;
     node_a.enable_writing().await;
+    node_a.node().start_listening().await.unwrap();
 
     let node_b = KadNode::new(id_b).await;
     node_b.enable_handshake().await;
     node_b.enable_reading().await;
     node_b.enable_writing().await;
+    node_b.node().start_listening().await.unwrap();
 
     node_a
         .node()

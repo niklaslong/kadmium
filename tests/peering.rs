@@ -30,6 +30,7 @@ async fn periodic_ping_pong() {
     node_a.enable_handshake().await;
     node_a.enable_reading().await;
     node_a.enable_writing().await;
+    node_a.node().start_listening().await.unwrap();
 
     // Start the PING task.
     node_a.ping().await;
@@ -38,6 +39,7 @@ async fn periodic_ping_pong() {
     node_b.enable_handshake().await;
     node_b.enable_reading().await;
     node_b.enable_writing().await;
+    node_b.node().start_listening().await.unwrap();
 
     // The handshake is enacted here, assertions are checked in the handshake protocol
     // implementation.

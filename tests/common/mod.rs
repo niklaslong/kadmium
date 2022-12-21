@@ -41,6 +41,9 @@ pub async fn create_n_nodes(n: usize, protocols: &str) -> Vec<KadNode> {
             }
         }
 
+        // Start the listener.
+        node.node().start_listening().await.unwrap();
+
         nodes.push(node)
     }
 
@@ -133,9 +136,7 @@ impl KadNode {
                 listener_ip: Some(IpAddr::V4(Ipv4Addr::LOCALHOST)),
                 max_connections: 1024,
                 ..Default::default()
-            })
-            .await
-            .unwrap(),
+            }),
             router: SyncTcpRouter::new(id, 10, 10),
 
             sent_message_counter: Arc::new(AtomicU64::new(0)),
