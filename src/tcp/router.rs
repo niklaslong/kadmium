@@ -423,7 +423,7 @@ mod tests {
     // Produces a local address from the supplied port.
     // TODO: consider testing with random ports and IDs.
     fn localhost_with_port(port: u16) -> SocketAddr {
-        format!("127.0.0.1:{}", port).parse().unwrap()
+        format!("127.0.0.1:{port}").parse().unwrap()
     }
 
     #[test]
@@ -554,7 +554,6 @@ mod tests {
 
         // Generate 5 identifiers and addressses.
         let peers: Vec<(Id, SocketAddr)> = (1..=5)
-            .into_iter()
             .map(|i| (Id::from_u16(i), localhost_with_port(i)))
             .collect();
 
@@ -586,7 +585,6 @@ mod tests {
 
         // Generate 5 identifiers and addressses.
         let peers: Vec<(Id, SocketAddr)> = (1..=5)
-            .into_iter()
             .map(|i| (Id::from_u16(i), localhost_with_port(i)))
             .collect();
 

@@ -37,7 +37,7 @@ pub async fn create_n_nodes(n: usize, protocols: &str) -> Vec<KadNode> {
                 'r' => node.enable_reading().await,
                 'w' => node.enable_writing().await,
                 'd' => node.enable_disconnect().await,
-                c => panic!("protocol: {} is unknown", c),
+                c => panic!("protocol: {c} is unknown"),
             }
         }
 
