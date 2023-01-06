@@ -48,36 +48,15 @@ impl SyncTcpRouter {
     }
 
     pub fn is_connected(&self, addr: SocketAddr) -> bool {
-        let rt_g = self.router.read();
-        if let Some(id) = rt_g.peer_id(addr) {
-            if let Some(peer_meta) = rt_g.peer_meta(&id) {
-                return matches!(peer_meta.conn_state, ConnState::Connected);
-            }
-        }
-
-        false
+        self.router.read().is_connected(addr)
     }
 
     pub fn disconnected_addrs(&self) -> Vec<SocketAddr> {
-        self.router
-            .read()
-            .routing_table()
-            .peer_list
-            .iter()
-            .filter(|(_, &peer_meta)| matches!(peer_meta.conn_state, ConnState::Disconnected))
-            .map(|(_, &peer_meta)| peer_meta.listening_addr)
-            .collect()
+        self.router.read().disconnected_addrs()
     }
 
     pub fn connected_addrs(&self) -> Vec<SocketAddr> {
-        self.router
-            .read()
-            .routing_table()
-            .peer_list
-            .iter()
-            .filter(|(_, &peer_meta)| matches!(peer_meta.conn_state, ConnState::Connected))
-            .map(|(_, &peer_meta)| peer_meta.conn_addr.unwrap())
-            .collect()
+        self.router.read().connected_addrs()
     }
 
     pub fn select_search_peers(&self, alpha: usize) -> Vec<(Id, SocketAddr, bool)> {

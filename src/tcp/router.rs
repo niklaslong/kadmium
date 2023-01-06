@@ -236,6 +236,37 @@ impl TcpRouter {
         false
     }
 
+    /// Returns `true` if the address is connected, `false` if it isn't.
+    pub fn is_connected(&self, addr: SocketAddr) -> bool {
+        if let Some(id) = self.peer_id(addr) {
+            if let Some(peer_meta) = self.peer_meta(&id) {
+                return matches!(peer_meta.conn_state, ConnState::Connected);
+            }
+        }
+
+        false
+    }
+
+    /// Returns the list disconnected addresses.
+    pub fn disconnected_addrs(&self) -> Vec<SocketAddr> {
+        self.rt
+            .peer_list
+            .iter()
+            .filter(|(_, &peer_meta)| matches!(peer_meta.conn_state, ConnState::Disconnected))
+            .map(|(_, &peer_meta)| peer_meta.listening_addr)
+            .collect()
+    }
+
+    /// Returns the list connected addresses.
+    pub fn connected_addrs(&self) -> Vec<SocketAddr> {
+        self.rt
+            .peer_list
+            .iter()
+            .filter(|(_, &peer_meta)| matches!(peer_meta.conn_state, ConnState::Connected))
+            .map(|(_, &peer_meta)| peer_meta.conn_addr.unwrap())
+            .collect()
+    }
+
     /// Selects the broadcast peers for a particular height, returns `None` if the broadcast
     /// shouldn't continue any further.
     pub fn select_broadcast_peers(&self, height: u32) -> Option<Vec<(u32, SocketAddr)>> {
