@@ -1,5 +1,8 @@
 #![cfg(all(feature = "codec", feature = "sync"))]
 
+use std::time::Duration;
+
+use deadline::deadline;
 use kadmium::{
     message::{FindKNodes, KNodes, Message, Ping, Pong},
     Id,
@@ -87,9 +90,10 @@ async fn ping_pong_two_nodes() {
         .is_ok());
 
     // Wait for PING to be received and PONG to come back.
-    tokio::time::sleep(std::time::Duration::from_millis(10)).await;
-    assert_eq!(node_b.received_messages.read().get(&nonce), Some(&ping));
-    assert_eq!(node_a.received_messages.read().get(&nonce), Some(&pong));
+    deadline!(Duration::from_millis(100), move || {
+        node_b.received_messages.read().get(&nonce) == Some(&ping)
+            && node_a.received_messages.read().get(&nonce) == Some(&pong)
+    });
 }
 
 #[tokio::test]
@@ -144,10 +148,8 @@ async fn k_nodes_two_nodes() {
         .await
         .is_ok());
 
-    tokio::time::sleep(std::time::Duration::from_millis(10)).await;
-    assert_eq!(
-        node_b.received_messages.read().get(&nonce),
-        Some(&find_k_nodes)
-    );
-    assert_eq!(node_a.received_messages.read().get(&nonce), Some(&k_nodes));
+    deadline!(Duration::from_millis(10), move || {
+        node_b.received_messages.read().get(&nonce) == Some(&find_k_nodes)
+            && node_a.received_messages.read().get(&nonce) == Some(&k_nodes)
+    });
 }

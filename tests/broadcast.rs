@@ -23,7 +23,7 @@ async fn broadcast_full_mesh() {
     let nonce = broadcaster.kadcast("Hello, world!".into()).await;
 
     // This needs to be longer when the test is run with more nodes.
-    tokio::time::sleep(std::time::Duration::from_millis(1000)).await;
+    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
 
     for node in nodes {
         let received_messages_g = node.received_messages.read();
@@ -69,7 +69,7 @@ async fn broadcast_partial_mesh() {
     let nonce = broadcaster.kadcast("Hello, world!".into()).await;
 
     // This needs to be longer when the test is run with more nodes.
-    tokio::time::sleep(std::time::Duration::from_millis(1000)).await;
+    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
 
     let mut received: u8 = 0;
 
