@@ -60,96 +60,29 @@ impl Encoder<Message> for MessageCodec {
 
 #[cfg(test)]
 mod tests {
-    use rand::{thread_rng, Rng};
+    use paste::paste;
 
     use super::*;
-    use crate::{
-        core::id::Id,
-        message::{Chunk, FindKNodes, KNodes, Ping, Pong},
-    };
+    use crate::message::{Chunk, FindKNodes, Init, KNodes, Ping, Pong};
 
-    #[test]
-    fn codec_ping() {
-        let mut rng = thread_rng();
+    macro_rules! codec_test {
+        ($($message:ident),*) => {
+            $(
+                paste! {
+                    #[test]
+                    fn [<$message:snake>]() {
+                        let message = Message::$message($message::default());
 
-        let message = Message::Ping(Ping {
-            nonce: rng.gen(),
-            id: Id::rand(),
-        });
+                        let mut codec = MessageCodec::new();
+                        let mut dst = BytesMut::new();
 
-        let mut codec = MessageCodec::new();
-        let mut dst = BytesMut::new();
-
-        assert!(codec.encode(message.clone(), &mut dst).is_ok());
-        assert_eq!(codec.decode(&mut dst).unwrap().unwrap(), message);
+                        assert!(codec.encode(message.clone(), &mut dst).is_ok());
+                        assert_eq!(codec.decode(&mut dst).unwrap().unwrap(), message);
+                    }
+                }
+            )*
+        };
     }
 
-    #[test]
-    fn codec_pong() {
-        let mut rng = thread_rng();
-
-        let message = Message::Pong(Pong {
-            nonce: rng.gen(),
-            id: Id::rand(),
-        });
-
-        let mut codec = MessageCodec::new();
-        let mut dst = BytesMut::new();
-
-        assert!(codec.encode(message.clone(), &mut dst).is_ok());
-        assert_eq!(codec.decode(&mut dst).unwrap().unwrap(), message);
-    }
-
-    #[test]
-    fn codec_find_k_nodes() {
-        let mut rng = thread_rng();
-
-        let message = Message::FindKNodes(FindKNodes {
-            nonce: rng.gen(),
-            id: Id::rand(),
-        });
-
-        let mut codec = MessageCodec::new();
-        let mut dst = BytesMut::new();
-
-        assert!(codec.encode(message.clone(), &mut dst).is_ok());
-        assert_eq!(codec.decode(&mut dst).unwrap().unwrap(), message);
-    }
-
-    #[test]
-    fn codec_k_nodes() {
-        let mut rng = thread_rng();
-
-        let message = Message::KNodes(KNodes {
-            nonce: rng.gen(),
-            nodes: vec![(Id::from_u16(0), "127.0.0.1:0".parse().unwrap())],
-        });
-
-        let mut codec = MessageCodec::new();
-        let mut dst = BytesMut::new();
-
-        assert!(codec.encode(message.clone(), &mut dst).is_ok());
-        assert_eq!(codec.decode(&mut dst).unwrap().unwrap(), message);
-    }
-
-    #[test]
-    fn codec_chunk() {
-        use rand::Fill;
-
-        let mut rng = thread_rng();
-        let mut data = [0u8; 32];
-        data.try_fill(&mut rng).unwrap();
-
-        let message = Message::Chunk(Chunk {
-            nonce: rng.gen(),
-            height: rng.gen(),
-            data: Bytes::copy_from_slice(&data),
-        });
-
-        let mut codec = MessageCodec::new();
-        let mut dst = BytesMut::new();
-
-        assert!(codec.encode(message.clone(), &mut dst).is_ok());
-        assert_eq!(codec.decode(&mut dst).unwrap().unwrap(), message);
-    }
+    codec_test!(Init, Ping, Pong, FindKNodes, KNodes, Chunk);
 }
