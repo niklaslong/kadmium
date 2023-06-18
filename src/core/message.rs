@@ -72,6 +72,7 @@ impl Message {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "codec", derive(Encode, Decode))]
+#[cfg_attr(test, derive(Default))]
 pub struct Init {
     pub nonce: Nonce,
     pub id: Id,
@@ -81,6 +82,7 @@ pub struct Init {
 /// The data making up a PING message.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "codec", derive(Encode, Decode))]
+#[cfg_attr(test, derive(Default))]
 pub struct Ping {
     pub nonce: Nonce,
     // TODO: sending the ID here may not be necessary.
@@ -90,6 +92,7 @@ pub struct Ping {
 /// The data making up a PONG message.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "codec", derive(Encode, Decode))]
+#[cfg_attr(test, derive(Default))]
 pub struct Pong {
     pub nonce: Nonce,
     // TODO: sending the ID here may not be necessary.
@@ -99,6 +102,7 @@ pub struct Pong {
 /// The data making up a FIND_NODES message.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "codec", derive(Encode, Decode))]
+#[cfg_attr(test, derive(Default))]
 pub struct FindKNodes {
     pub nonce: Nonce,
     pub id: Id,
@@ -107,6 +111,7 @@ pub struct FindKNodes {
 /// The data making up a NODES message.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "codec", derive(Encode, Decode))]
+#[cfg_attr(test, derive(Default))]
 pub struct KNodes {
     pub nonce: Nonce,
     pub nodes: Vec<(Id, SocketAddr)>,
@@ -115,6 +120,7 @@ pub struct KNodes {
 /// The data making up a CHUNK message.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "codec", derive(Encode, Decode))]
+#[cfg_attr(test, derive(Default))]
 pub struct Chunk {
     // TODO: work out if this is a bad idea.
     pub nonce: Nonce,
@@ -130,128 +136,65 @@ mod tests {
 
     use super::*;
 
+    macro_rules! assert_as_str {
+        ($variant:ident, $variant_as_str:expr) => {
+            let message = Message::$variant($variant::default());
+            assert_eq!(message.variant_as_str(), $variant_as_str);
+        };
+    }
+
     #[test]
     fn variant_as_str() {
-        assert_eq!(
-            Message::Ping(Ping {
-                nonce: 0,
-                id: Id::from_u16(0)
-            })
-            .variant_as_str(),
-            "ping"
-        );
-        assert_eq!(
-            Message::Pong(Pong {
-                nonce: 0,
-                id: Id::from_u16(0)
-            })
-            .variant_as_str(),
-            "pong"
-        );
-        assert_eq!(
-            Message::FindKNodes(FindKNodes {
-                nonce: 0,
-                id: Id::from_u16(0)
-            })
-            .variant_as_str(),
-            "find_k_nodes"
-        );
-        assert_eq!(
-            Message::KNodes(KNodes {
-                nonce: 0,
-                nodes: vec![]
-            })
-            .variant_as_str(),
-            "k_nodes"
-        );
-        assert_eq!(
-            Message::Chunk(Chunk {
-                nonce: 0,
-                height: 0,
-                data: Bytes::new()
-            })
-            .variant_as_str(),
-            "chunk"
-        );
+        assert_as_str!(Init, "init");
+        assert_as_str!(Ping, "ping");
+        assert_as_str!(Pong, "pong");
+        assert_as_str!(FindKNodes, "find_k_nodes");
+        assert_as_str!(KNodes, "k_nodes");
+        assert_as_str!(Chunk, "chunk");
+    }
+
+    macro_rules! assert_nonce {
+        ($($variant:ident),*) => {
+            // Reuse the same RNG for all nonce tests.
+            let mut rng = thread_rng();
+
+            $(
+                let nonce = rng.gen();
+                // Set the nonce on the message payload and wrap in the enum.
+                let mut variant = $variant::default();
+                variant.nonce = nonce;
+                let message = Message::$variant(variant);
+
+                // Check `Message::nonce` returns the same nonce.
+                assert_eq!(message.nonce(), nonce);
+            )*
+        };
     }
 
     #[test]
     fn nonce() {
-        let mut rng = thread_rng();
-        let nonce = rng.gen();
+        assert_nonce!(Init, Ping, Pong, FindKNodes, KNodes, Chunk);
+    }
 
-        assert_eq!(
-            Message::Ping(Ping {
-                nonce,
-                id: Id::from_u16(0)
-            })
-            .nonce(),
-            nonce
-        );
-        assert_eq!(
-            Message::Pong(Pong {
-                nonce,
-                id: Id::from_u16(0)
-            })
-            .nonce(),
-            nonce
-        );
-        assert_eq!(
-            Message::FindKNodes(FindKNodes {
-                nonce,
-                id: Id::from_u16(0)
-            })
-            .nonce(),
-            nonce
-        );
-        assert_eq!(
-            Message::KNodes(KNodes {
-                nonce,
-                nodes: vec![]
-            })
-            .nonce(),
-            nonce
-        );
-        assert_eq!(
-            Message::Chunk(Chunk {
-                nonce,
-                height: 0,
-                data: Bytes::new()
-            })
-            .nonce(),
-            nonce
-        );
+    macro_rules! assert_is_response {
+        ($($variant:ident),*) => {
+            $(
+                assert!(Message::$variant($variant::default()).is_response());
+            )*
+        };
+    }
+
+    macro_rules! assert_is_not_response {
+        ($($variant:ident),*) => {
+            $(
+                assert!(!Message::$variant($variant::default()).is_response());
+            )*
+        };
     }
 
     #[test]
     fn is_response() {
-        // RESPONSES
-        assert!(Message::Pong(Pong {
-            nonce: 0,
-            id: Id::from_u16(0)
-        })
-        .is_response());
-        assert!(Message::KNodes(KNodes {
-            nonce: 0,
-            nodes: vec![]
-        })
-        .is_response());
-        // NOT RESPONSES
-        assert!(!Message::Ping(Ping {
-            nonce: 0,
-            id: Id::from_u16(0)
-        })
-        .is_response());
-        assert!(!Message::FindKNodes(FindKNodes {
-            nonce: 0,
-            id: Id::from_u16(0)
-        })
-        .is_response());
-        assert!(!Message::Chunk(Chunk {
-            nonce: 0,
-            height: 0,
-            data: Bytes::new()
-        })
-        .is_response());
+        assert_is_response!(Pong, KNodes);
+        assert_is_not_response!(Init, Ping, FindKNodes, Chunk);
     }
 }

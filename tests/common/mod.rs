@@ -25,6 +25,7 @@ use pea2pea::{
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tracing::*;
 use tracing_subscriber::{fmt, EnvFilter};
+
 #[allow(dead_code)]
 pub async fn create_n_nodes(n: usize, protocols: &str) -> Vec<KadNode> {
     let mut nodes = Vec::with_capacity(n);

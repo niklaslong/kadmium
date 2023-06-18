@@ -6,6 +6,7 @@ use bincode::{Decode, Encode};
 /// A 256-bit identifier that implements a non-euclidian XOR-based distance metric.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "codec", derive(Encode, Decode))]
+#[cfg_attr(test, derive(Default))]
 pub struct Id {
     bytes: [u8; Self::BYTES],
 }
