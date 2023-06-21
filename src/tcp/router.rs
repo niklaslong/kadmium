@@ -57,7 +57,9 @@ impl Default for TcpRouter {
     fn default() -> Self {
         let mut rng = thread_rng();
         let mut bytes = [0u8; Id::BYTES];
-        debug_assert!(bytes.try_fill(&mut rng).is_ok());
+        let _res = bytes.try_fill(&mut rng);
+        // Sanity check this doesn't fail in debug mode.
+        debug_assert!(_res.is_ok());
 
         Self {
             rt: RoutingTable {
@@ -455,6 +457,23 @@ mod tests {
     // TODO: consider testing with random ports and IDs.
     fn localhost_with_port(port: u16) -> SocketAddr {
         format!("127.0.0.1:{port}").parse().unwrap()
+    }
+
+    #[test]
+    fn default() {
+        let router = TcpRouter::default();
+        // We can't assert on randomness, but we can check the local id has been been filled with
+        // non=zero bytes.
+        assert_ne!(router.local_id(), Id::from_u16(0));
+
+        // Check the default constants.
+        assert_eq!(router.rt.k, 20);
+        assert_eq!(router.rt.max_bucket_size, 20);
+
+        // Check the collections are empty.
+        assert!(router.rt.buckets.is_empty());
+        assert!(router.rt.peer_list.is_empty());
+        assert!(router.rt.id_list.is_empty());
     }
 
     #[test]
