@@ -50,7 +50,7 @@ optional = true
 [dev-dependencies]
 deadline = "0.2.0"
 paste = "1.0"
-pea2pea = "0.47.0"
+pea2pea = "0.48.0"
 
 [dev-dependencies.tracing]
 version = "0.1.35"
