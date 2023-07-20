@@ -19,7 +19,7 @@ use kadmium::{
 };
 use parking_lot::RwLock;
 use pea2pea::{
-    protocols::{Disconnect, Handshake, Reading, Writing},
+    protocols::{Handshake, OnDisconnect, Reading, Writing},
     Config, Connection, ConnectionSide, Node, Pea2Pea,
 };
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -282,8 +282,8 @@ impl Handshake for KadNode {
 }
 
 #[async_trait::async_trait]
-impl Disconnect for KadNode {
-    async fn handle_disconnect(&self, addr: SocketAddr) {
+impl OnDisconnect for KadNode {
+    async fn on_disconnect(&self, addr: SocketAddr) {
         self.router.set_disconnected(addr);
     }
 }
