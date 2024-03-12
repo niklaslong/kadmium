@@ -10,21 +10,18 @@ documentation = "https://docs.rs/kadmium"
 readme = "README.md"
 categories = ["algorithms", "network-programming"]
 keywords = ["p2p", "peer-to-peer", "networking"]
+rust-version = "1.75"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [features]
 default = []
 full = ["codec", "sync"]
 codec = ["tokio-util/codec", "bincode", "bytes/serde"]
-sync = ["async-trait", "parking_lot", "tokio"]
+sync = ["parking_lot", "tokio"]
 
 [dependencies]
 rand = "0.8.5"
 time = "0.3.11"
-
-[dependencies.async-trait]
-version = "0.1.56"
-optional = true
 
 [dependencies.parking_lot]
 version = "0.12.1"
@@ -50,7 +47,7 @@ optional = true
 [dev-dependencies]
 deadline = "0.2.0"
 paste = "1.0"
-pea2pea = "0.48.0"
+pea2pea = "0.49.0"
 
 [dev-dependencies.tracing]
 version = "0.1.35"

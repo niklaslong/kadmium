@@ -77,7 +77,6 @@ impl ProcessData<KadNode> for Data {
     }
 }
 
-#[async_trait::async_trait]
 impl Kadcast for KadNode {
     // Shorten the defaults for testing purposes.
     const PEER_TARGET: u16 = 20;
@@ -134,7 +133,7 @@ impl KadNode {
     pub async fn new(id: Id) -> Self {
         Self {
             node: Node::new(Config {
-                listener_ip: Some(IpAddr::V4(Ipv4Addr::LOCALHOST)),
+                listener_addr: Some(SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 0)),
                 max_connections: 1024,
                 ..Default::default()
             }),
@@ -163,7 +162,6 @@ impl Pea2Pea for KadNode {
     }
 }
 
-#[async_trait::async_trait]
 impl Reading for KadNode {
     type Message = Message;
     type Codec = MessageCodec;
@@ -214,7 +212,6 @@ impl Writing for KadNode {
     }
 }
 
-#[async_trait::async_trait]
 impl Handshake for KadNode {
     async fn perform_handshake(&self, mut conn: Connection) -> io::Result<Connection> {
         let local_id = self.router.local_id();
@@ -281,7 +278,6 @@ impl Handshake for KadNode {
     }
 }
 
-#[async_trait::async_trait]
 impl OnDisconnect for KadNode {
     async fn on_disconnect(&self, addr: SocketAddr) {
         self.router.set_disconnected(addr);
